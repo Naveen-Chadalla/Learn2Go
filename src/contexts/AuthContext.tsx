@@ -86,17 +86,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .from('users')
         .select('username')
         .eq('username', username)
-        .single()
+        .maybeSingle()
 
-      if (error && error.code === 'PGRST116') {
-        return { available: true, message: 'Username is available!' }
-      }
-
+      // If data exists, username is taken
       if (data) {
         return { available: false, message: 'Username is already taken' }
       }
 
-      return { available: false, message: 'Unable to check username availability' }
+      // If there's an error, it's a real failure
+      if (error) {
+        logDebugInfo('Username availability check failed', error)
+        return { available: false, message: 'Error checking username availability' }
+      }
+
+      // If both data and error are null, username is available
+      return { available: true, message: 'Username is available!' }
     } catch (error) {
       logDebugInfo('Username availability check failed', error)
       return { available: false, message: 'Error checking username availability' }
