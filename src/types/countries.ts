@@ -182,3 +182,31 @@ export const detectUserCountry = (): string => {
       return 'US'
   }
 }
+
+// Get total number of supported languages
+export const getTotalLanguageCount = (): number => {
+  const uniqueLanguages = new Set<string>()
+  
+  countries.forEach(country => {
+    country.languages.forEach(language => {
+      uniqueLanguages.add(language.code)
+    })
+  })
+  
+  return uniqueLanguages.size
+}
+
+// Get all unique languages across all countries
+export const getAllSupportedLanguages = (): Language[] => {
+  const languageMap = new Map<string, Language>()
+  
+  countries.forEach(country => {
+    country.languages.forEach(language => {
+      if (!languageMap.has(language.code)) {
+        languageMap.set(language.code, language)
+      }
+    })
+  })
+  
+  return Array.from(languageMap.values()).sort((a, b) => a.name.localeCompare(b.name))
+}
