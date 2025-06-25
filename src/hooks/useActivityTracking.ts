@@ -7,79 +7,115 @@ export const useActivityTracking = () => {
   const { user, isAuthenticated } = useAuth()
   const location = useLocation()
 
+  // Get username with fallback to email
+  const getCurrentUsername = useCallback(() => {
+    if (!user) return null
+    
+    // Try user_metadata.username first, then fall back to email
+    const username = user.user_metadata?.username || user.email
+    
+    if (!username) {
+      console.warn('[ACTIVITY] No username or email found for user:', user)
+      return null
+    }
+    
+    return username
+  }, [user])
+
   // Start session when user logs in
   useEffect(() => {
-    if (isAuthenticated && user?.user_metadata?.username) {
-      const startTracking = async () => {
-        await activityTracker.startSession(user.user_metadata.username)
+    if (isAuthenticated && user) {
+      const username = getCurrentUsername()
+      
+      if (!username) {
+        console.error('[ACTIVITY] Cannot start tracking - no valid username')
+        return
       }
+
+      const startTracking = async () => {
+        try {
+          await activityTracker.startSession(username)
+        } catch (error) {
+          console.error('[ACTIVITY] Failed to start session:', error)
+        }
+      }
+      
       startTracking()
 
       // Set up heartbeat to keep activity updated
       const heartbeatInterval = setInterval(() => {
-        activityTracker.updateActivityHeartbeat(user.user_metadata.username)
+        activityTracker.updateActivityHeartbeat(username)
       }, 60000) // Every minute
 
       return () => {
         clearInterval(heartbeatInterval)
         // End session when component unmounts or user logs out
-        activityTracker.endSession(user.user_metadata.username)
+        activityTracker.endSession(username)
       }
     }
-  }, [isAuthenticated, user])
+  }, [isAuthenticated, user, getCurrentUsername])
 
   // Track page navigation
   useEffect(() => {
-    if (isAuthenticated && user?.user_metadata?.username) {
+    if (isAuthenticated && user) {
+      const username = getCurrentUsername()
+      
+      if (!username) {
+        console.error('[ACTIVITY] Cannot track page view - no valid username')
+        return
+      }
+
       const pageTitle = getPageTitle(location.pathname)
-      activityTracker.trackPageView(
-        user.user_metadata.username,
-        location.pathname,
-        pageTitle
-      )
+      activityTracker.trackPageView(username, location.pathname, pageTitle)
     }
-  }, [location.pathname, isAuthenticated, user])
+  }, [location.pathname, isAuthenticated, user, getCurrentUsername])
 
   // Lesson tracking functions
   const trackLessonStart = useCallback((lessonId: string, lessonTitle: string) => {
-    if (user?.user_metadata?.username) {
-      activityTracker.trackLessonStart(user.user_metadata.username, lessonId, lessonTitle)
+    const username = getCurrentUsername()
+    if (username) {
+      activityTracker.trackLessonStart(username, lessonId, lessonTitle)
     }
-  }, [user])
+  }, [getCurrentUsername])
 
   const trackLessonComplete = useCallback((lessonId: string, lessonTitle: string, timeSpent: number) => {
-    if (user?.user_metadata?.username) {
-      activityTracker.trackLessonComplete(user.user_metadata.username, lessonId, lessonTitle, timeSpent)
+    const username = getCurrentUsername()
+    if (username) {
+      activityTracker.trackLessonComplete(username, lessonId, lessonTitle, timeSpent)
     }
-  }, [user])
+  }, [getCurrentUsername])
 
   // Quiz tracking functions
   const trackQuizAttempt = useCallback((lessonId: string, quizData: any) => {
-    if (user?.user_metadata?.username) {
-      activityTracker.trackQuizAttempt(user.user_metadata.username, lessonId, quizData)
+    const username = getCurrentUsername()
+    if (username) {
+      activityTracker.trackQuizAttempt(username, lessonId, quizData)
     }
-  }, [user])
+  }, [getCurrentUsername])
 
   const trackQuizComplete = useCallback((lessonId: string, score: number, timeSpent: number, quizData: any) => {
-    if (user?.user_metadata?.username) {
-      activityTracker.trackQuizComplete(user.user_metadata.username, lessonId, score, timeSpent, quizData)
+    const username = getCurrentUsername()
+    if (username) {
+      activityTracker.trackQuizComplete(username, lessonId, score, timeSpent, quizData)
     }
-  }, [user])
+  }, [getCurrentUsername])
 
   // Game tracking functions
   const trackGamePlay = useCallback((gameId: string, gameName: string, score: number, timeSpent: number) => {
-    if (user?.user_metadata?.username) {
-      activityTracker.trackGamePlay(user.user_metadata.username, gameId, gameName, score, timeSpent)
+    const username = getCurrentUsername()
+    if (username) {
+      activityTracker.trackGamePlay(username, gameId, gameName, score, timeSpent)
     }
-  }, [user])
+  }, [getCurrentUsername])
 
   // Get activity summary
   const getActivitySummary = useCallback(async (days: number = 7) => {
-    if (user?.user_metadata?.username) {
-      return await activityTracker.getUserActivitySummary(user.user_metadata.username, days)
+    const username = getCurrentUsername()
+    if (username) {
+      return await activityTracker.getUserActivitySummary(username, days)
     }
     return null
-  }, [user])
+  }, [getCurrentUsername])
 
   return {
     trackLessonStart,
