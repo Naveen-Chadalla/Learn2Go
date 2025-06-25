@@ -502,5 +502,3 @@ class ActivityTracker {
 
 export const activityTracker = new ActivityTracker()
 export default activityTracker
-
-export { activityTracker }
