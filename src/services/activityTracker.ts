@@ -58,6 +58,11 @@ class ActivityTracker {
   // Start tracking session with improved token management
   async startSession(username: string): Promise<string> {
     try {
+      // Validate username parameter
+      if (!username || username.trim() === '') {
+        throw new Error('Username is required for session tracking')
+      }
+
       // First, check if we have an existing valid session
       const existingToken = sessionStorage.getItem('activity_session_token')
       if (existingToken) {
@@ -80,6 +85,12 @@ class ActivityTracker {
       
       while (attempts < 5) {
         sessionToken = this.generateSessionToken()
+        
+        // Validate generated token
+        if (!sessionToken || sessionToken.trim() === '') {
+          attempts++
+          continue
+        }
         
         // Check if this token already exists
         const { data: existingSession } = await supabase
@@ -105,16 +116,31 @@ class ActivityTracker {
       this.sessionStartTime = Date.now()
       
       const sessionData: SessionData = {
-        username,
+        username: username.trim(),
         sessionToken: this.currentSessionToken,
         ipAddress: await this.getClientIP(),
         userAgent: navigator.userAgent
       }
 
+      // Validate all required parameters before RPC call
+      if (!sessionData.username || sessionData.username.trim() === '') {
+        throw new Error('Username is required and cannot be empty')
+      }
+      
+      if (!sessionData.sessionToken || sessionData.sessionToken.trim() === '') {
+        throw new Error('Session token is required and cannot be empty')
+      }
+
+      console.log('[ACTIVITY] Starting session with:', {
+        username: sessionData.username,
+        sessionToken: sessionData.sessionToken.substring(0, 20) + '...',
+        userAgent: sessionData.userAgent?.substring(0, 50) + '...'
+      })
+
       // Call database function to start session
       const { error } = await supabase.rpc('start_user_session', {
-        user_name: username,
-        session_token: this.currentSessionToken,
+        user_name: sessionData.username,
+        session_token: sessionData.sessionToken,
         user_ip: sessionData.ipAddress,
         user_agent_string: sessionData.userAgent
       })
@@ -124,7 +150,7 @@ class ActivityTracker {
         this.currentSessionToken = null
         throw error
       } else {
-        console.log('[ACTIVITY] Session started:', this.currentSessionToken)
+        console.log('[ACTIVITY] Session started successfully:', this.currentSessionToken)
         
         // Store session token securely only after successful creation
         sessionStorage.setItem('activity_session_token', this.currentSessionToken)
@@ -138,28 +164,36 @@ class ActivityTracker {
       console.error('[ACTIVITY] Exception starting session:', error)
       this.currentSessionToken = null
       sessionStorage.removeItem('activity_session_token')
-      return ''
+      throw error
     }
   }
 
   // End tracking session
   async endSession(username: string): Promise<void> {
     try {
+      // Validate username parameter
+      if (!username || username.trim() === '') {
+        console.warn('[ACTIVITY] Cannot end session - username is required')
+        return
+      }
+
       if (!this.currentSessionToken) {
         this.currentSessionToken = sessionStorage.getItem('activity_session_token')
       }
 
       if (this.currentSessionToken) {
+        console.log('[ACTIVITY] Ending session:', this.currentSessionToken)
+        
         // Call database function to end session
         const { error } = await supabase.rpc('end_user_session', {
-          user_name: username,
+          user_name: username.trim(),
           token_value: this.currentSessionToken
         })
 
         if (error) {
           console.error('[ACTIVITY] Failed to end session:', error)
         } else {
-          console.log('[ACTIVITY] Session ended:', this.currentSessionToken)
+          console.log('[ACTIVITY] Session ended successfully:', this.currentSessionToken)
         }
       }
 
@@ -175,12 +209,23 @@ class ActivityTracker {
   // Log general activity with better error handling
   async logActivity(activity: ActivityLog): Promise<void> {
     try {
+      // Validate required parameters
+      if (!activity.username || activity.username.trim() === '') {
+        console.warn('[ACTIVITY] Cannot log activity - username is required')
+        return
+      }
+
+      if (!activity.activityType || activity.activityType.trim() === '') {
+        console.warn('[ACTIVITY] Cannot log activity - activity type is required')
+        return
+      }
+
       if (!this.currentSessionToken) {
         this.currentSessionToken = sessionStorage.getItem('activity_session_token')
       }
 
       const { error } = await supabase.rpc('log_user_activity', {
-        user_name: activity.username,
+        user_name: activity.username.trim(),
         activity: activity.activityType,
         details: activity.details || {},
         token_value: this.currentSessionToken,
@@ -286,6 +331,12 @@ class ActivityTracker {
   // Track page navigation with improved error handling
   async trackPageView(username: string, pagePath: string, pageTitle: string): Promise<void> {
     try {
+      // Validate parameters
+      if (!username || username.trim() === '') {
+        console.warn('[ACTIVITY] Cannot track page view - username is required')
+        return
+      }
+
       // Log previous page duration if we have one
       if (this.currentPage && this.pageStartTime) {
         const timeSpent = Math.floor((Date.now() - this.pageStartTime) / 1000)
@@ -383,6 +434,11 @@ class ActivityTracker {
   // Update user activity heartbeat
   async updateActivityHeartbeat(username: string): Promise<void> {
     try {
+      if (!username || username.trim() === '') {
+        console.warn('[ACTIVITY] Cannot update heartbeat - username is required')
+        return
+      }
+
       await supabase
         .from('users')
         .update({ last_active: new Date().toISOString() })
@@ -395,6 +451,11 @@ class ActivityTracker {
   // Get user activity summary
   async getUserActivitySummary(username: string, days: number = 7): Promise<any> {
     try {
+      if (!username || username.trim() === '') {
+        console.warn('[ACTIVITY] Cannot get activity summary - username is required')
+        return null
+      }
+
       const { data, error } = await supabase
         .from('user_activity_logs')
         .select('*')
@@ -441,3 +502,5 @@ class ActivityTracker {
 
 export const activityTracker = new ActivityTracker()
 export default activityTracker
+
+export { activityTracker }
