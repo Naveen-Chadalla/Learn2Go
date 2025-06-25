@@ -21,16 +21,88 @@ class ActivityTracker {
   private currentSessionToken: string | null = null
   private pageStartTime: number = Date.now()
   private currentPage: string = ''
+  private sessionStartTime: number = 0
 
-  // Generate unique session token
+  // Generate unique session token with timestamp and random component
   private generateSessionToken(): string {
-    return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    const timestamp = Date.now()
+    const random = Math.random().toString(36).substr(2, 12)
+    const userRandom = Math.floor(Math.random() * 10000)
+    return `session_${timestamp}_${random}_${userRandom}`
   }
 
-  // Start tracking session
+  // Check if current session is valid
+  private async isSessionValid(): Promise<boolean> {
+    if (!this.currentSessionToken) return false
+
+    try {
+      const { data, error } = await supabase
+        .from('user_sessions')
+        .select('is_active, login_time')
+        .eq('session_token', this.currentSessionToken)
+        .eq('is_active', true)
+        .single()
+
+      if (error || !data) return false
+
+      // Check if session is not too old (24 hours max)
+      const sessionAge = Date.now() - new Date(data.login_time).getTime()
+      const maxAge = 24 * 60 * 60 * 1000 // 24 hours
+      
+      return sessionAge < maxAge
+    } catch {
+      return false
+    }
+  }
+
+  // Start tracking session with improved token management
   async startSession(username: string): Promise<string> {
     try {
-      this.currentSessionToken = this.generateSessionToken()
+      // First, check if we have an existing valid session
+      const existingToken = sessionStorage.getItem('activity_session_token')
+      if (existingToken) {
+        this.currentSessionToken = existingToken
+        const isValid = await this.isSessionValid()
+        if (isValid) {
+          console.log('[ACTIVITY] Reusing existing valid session:', this.currentSessionToken)
+          this.startPageTracking()
+          return this.currentSessionToken
+        } else {
+          // Clean up invalid session
+          sessionStorage.removeItem('activity_session_token')
+          this.currentSessionToken = null
+        }
+      }
+
+      // Generate new unique session token
+      let attempts = 0
+      let sessionToken = ''
+      
+      while (attempts < 5) {
+        sessionToken = this.generateSessionToken()
+        
+        // Check if this token already exists
+        const { data: existingSession } = await supabase
+          .from('user_sessions')
+          .select('session_token')
+          .eq('session_token', sessionToken)
+          .single()
+
+        if (!existingSession) {
+          break // Token is unique
+        }
+        
+        attempts++
+        // Add small delay to ensure timestamp difference
+        await new Promise(resolve => setTimeout(resolve, 10))
+      }
+
+      if (attempts >= 5) {
+        throw new Error('Failed to generate unique session token after 5 attempts')
+      }
+
+      this.currentSessionToken = sessionToken
+      this.sessionStartTime = Date.now()
       
       const sessionData: SessionData = {
         username,
@@ -49,10 +121,12 @@ class ActivityTracker {
 
       if (error) {
         console.error('[ACTIVITY] Failed to start session:', error)
+        this.currentSessionToken = null
+        throw error
       } else {
         console.log('[ACTIVITY] Session started:', this.currentSessionToken)
         
-        // Store session token securely
+        // Store session token securely only after successful creation
         sessionStorage.setItem('activity_session_token', this.currentSessionToken)
         
         // Start page tracking
@@ -62,6 +136,8 @@ class ActivityTracker {
       return this.currentSessionToken
     } catch (error) {
       console.error('[ACTIVITY] Exception starting session:', error)
+      this.currentSessionToken = null
+      sessionStorage.removeItem('activity_session_token')
       return ''
     }
   }
@@ -74,7 +150,7 @@ class ActivityTracker {
       }
 
       if (this.currentSessionToken) {
-        // Call database function to end session with updated parameter name
+        // Call database function to end session
         const { error } = await supabase.rpc('end_user_session', {
           user_name: username,
           token_value: this.currentSessionToken
@@ -96,7 +172,7 @@ class ActivityTracker {
     }
   }
 
-  // Log general activity
+  // Log general activity with better error handling
   async logActivity(activity: ActivityLog): Promise<void> {
     try {
       if (!this.currentSessionToken) {
@@ -115,6 +191,7 @@ class ActivityTracker {
 
       if (error) {
         console.error('[ACTIVITY] Failed to log activity:', error)
+        // Don't throw error to prevent breaking user experience
       } else {
         console.log('[ACTIVITY] Logged:', activity.activityType)
       }
@@ -149,13 +226,17 @@ class ActivityTracker {
     })
 
     // Update user's last completed lesson
-    await supabase
-      .from('users')
-      .update({ 
-        last_lesson_completed: lessonTitle,
-        last_active: new Date().toISOString()
-      })
-      .eq('username', username)
+    try {
+      await supabase
+        .from('users')
+        .update({ 
+          last_lesson_completed: lessonTitle,
+          last_active: new Date().toISOString()
+        })
+        .eq('username', username)
+    } catch (error) {
+      console.error('[ACTIVITY] Failed to update user lesson completion:', error)
+    }
   }
 
   // Track quiz attempts and results
@@ -202,49 +283,57 @@ class ActivityTracker {
     })
   }
 
-  // Track page navigation
+  // Track page navigation with improved error handling
   async trackPageView(username: string, pagePath: string, pageTitle: string): Promise<void> {
-    // Log previous page duration if we have one
-    if (this.currentPage && this.pageStartTime) {
-      const timeSpent = Math.floor((Date.now() - this.pageStartTime) / 1000)
-      
+    try {
+      // Log previous page duration if we have one
+      if (this.currentPage && this.pageStartTime) {
+        const timeSpent = Math.floor((Date.now() - this.pageStartTime) / 1000)
+        
+        await this.logActivity({
+          username,
+          activityType: 'page_view',
+          details: {
+            page_path: this.currentPage,
+            page_title: document.title,
+            viewed_at: new Date(this.pageStartTime).toISOString()
+          },
+          durationSeconds: timeSpent,
+          pageUrl: this.currentPage
+        })
+      }
+
+      // Update current page tracking
+      this.currentPage = pagePath
+      this.pageStartTime = Date.now()
+
+      // Update user's current page in database
+      try {
+        await supabase
+          .from('users')
+          .update({ 
+            current_page: pageTitle,
+            last_active: new Date().toISOString()
+          })
+          .eq('username', username)
+      } catch (error) {
+        console.error('[ACTIVITY] Failed to update user current page:', error)
+      }
+
+      // Log navigation
       await this.logActivity({
         username,
-        activityType: 'page_view',
+        activityType: 'navigation',
         details: {
-          page_path: this.currentPage,
-          page_title: document.title,
-          viewed_at: new Date(this.pageStartTime).toISOString()
+          from_page: this.currentPage,
+          to_page: pagePath,
+          navigated_at: new Date().toISOString()
         },
-        durationSeconds: timeSpent,
-        pageUrl: this.currentPage
+        pageUrl: pagePath
       })
+    } catch (error) {
+      console.error('[ACTIVITY] Exception in trackPageView:', error)
     }
-
-    // Update current page tracking
-    this.currentPage = pagePath
-    this.pageStartTime = Date.now()
-
-    // Update user's current page in database
-    await supabase
-      .from('users')
-      .update({ 
-        current_page: pageTitle,
-        last_active: new Date().toISOString()
-      })
-      .eq('username', username)
-
-    // Log navigation
-    await this.logActivity({
-      username,
-      activityType: 'navigation',
-      details: {
-        from_page: this.currentPage,
-        to_page: pagePath,
-        navigated_at: new Date().toISOString()
-      },
-      pageUrl: pagePath
-    })
   }
 
   // Start automatic page tracking
@@ -264,11 +353,13 @@ class ActivityTracker {
       if (this.currentPage && this.pageStartTime) {
         const timeSpent = Math.floor((Date.now() - this.pageStartTime) / 1000)
         // Use sendBeacon for reliable tracking on page unload
-        navigator.sendBeacon('/api/track-page-duration', JSON.stringify({
-          page: this.currentPage,
-          duration: timeSpent,
-          sessionToken: this.currentSessionToken
-        }))
+        if (navigator.sendBeacon) {
+          navigator.sendBeacon('/api/track-page-duration', JSON.stringify({
+            page: this.currentPage,
+            duration: timeSpent,
+            sessionToken: this.currentSessionToken
+          }))
+        }
       }
     })
   }
