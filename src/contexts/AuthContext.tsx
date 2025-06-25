@@ -39,7 +39,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     lastActivity: null as string | null
   })
 
-  // Simplified logging
   const logDebugInfo = useCallback((message: string, error?: any) => {
     console.log(`[AUTH] ${message}`, error || '')
     setDebugInfo(prev => ({
@@ -49,7 +48,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }))
   }, [])
 
-  // SIMPLIFIED session management - no complex validation
   const updateUserActivity = useCallback(async (authUser: User) => {
     try {
       const { error } = await supabase
@@ -105,13 +103,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [logDebugInfo])
 
-  // SIMPLIFIED initialization - no complex session validation
+  // ULTRA SIMPLIFIED initialization - no complex operations
   useEffect(() => {
     let mounted = true
 
     const initializeAuth = async () => {
       try {
-        logDebugInfo('Starting simplified auth initialization')
+        logDebugInfo('Starting auth initialization')
         
         const { data: { session }, error } = await supabase.auth.getSession()
         
@@ -119,14 +117,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (error) {
           logDebugInfo('Error getting session', error)
-          setSession(null)
-          setUser(null)
-        } else if (session?.user) {
+        }
+
+        if (session?.user) {
           logDebugInfo('Session found', { username: session.user.user_metadata?.username })
           setSession(session)
           setUser(session.user)
-          
-          // Update activity in background (non-blocking)
           updateUserActivity(session.user).catch(console.warn)
         } else {
           logDebugInfo('No session found')
@@ -141,7 +137,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       } finally {
         if (mounted) {
-          setLoading(false) // ALWAYS set loading to false
+          // ALWAYS set loading to false after 100ms minimum
+          setTimeout(() => {
+            if (mounted) {
+              setLoading(false)
+            }
+          }, 100)
         }
       }
     }
@@ -177,7 +178,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(session.user)
       }
 
-      // ALWAYS ensure loading is false after auth state change
+      // Ensure loading is false
       setLoading(false)
     })
 
@@ -273,7 +274,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }
 
-  // INSTANT LOGOUT - no complex operations
   const signOut = async (): Promise<{ success: boolean; error?: string }> => {
     try {
       logDebugInfo('Starting instant logout')

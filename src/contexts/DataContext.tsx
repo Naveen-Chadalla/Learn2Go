@@ -159,18 +159,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [progress, setProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [isDataReady, setIsDataReady] = useState(false)
-  const [hasInitialized, setHasInitialized] = useState(false)
+  const [initialized, setInitialized] = useState(false)
 
-  // INSTANT LOADING - No delays, no complex operations
-  const instantLoad = useCallback(async () => {
-    if (!user || !isAuthenticated || hasInitialized) {
+  // INSTANT LOADING - No delays, no complex operations, no blinking
+  const instantLoad = useCallback(() => {
+    if (!user || !isAuthenticated || initialized) {
       return
     }
 
     console.log('[DATA] Starting instant load...')
     setLoading(true)
     setError(null)
-    setProgress(25)
     
     try {
       // Create user profile instantly
@@ -188,27 +187,18 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         session_end: ''
       }
 
-      setProgress(50)
-
       // Load default lessons instantly
       const lessons = getDefaultLessons(userProfile.country, userProfile.language)
-      
-      setProgress(75)
-
-      // Load user progress in background (non-blocking)
-      const userProgressPromise = loadUserProgressFromDatabase(userProfile.username)
       
       // Calculate analytics with empty progress first
       const analytics = calculateAnalytics([], lessons)
       const badges = generateBadges([], lessons)
       const countryTheme = getCountryTheme(userProfile.country)
 
-      setProgress(100)
-
       const finalData = {
         userProfile,
         lessons,
-        userProgress: [], // Will be updated when loaded
+        userProgress: [],
         badges,
         games: getDefaultGames(),
         analytics,
@@ -218,14 +208,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         languageContent: {}
       }
 
+      // Set everything instantly
       setData(finalData)
+      setProgress(100)
       setIsDataReady(true)
-      setHasInitialized(true)
+      setInitialized(true)
+      setLoading(false)
       
       console.log('[DATA] Instant load completed')
 
-      // Update with real progress data when available
-      userProgressPromise.then(userProgress => {
+      // Load real progress data in background (non-blocking)
+      loadUserProgressFromDatabase(userProfile.username).then(userProgress => {
         if (userProgress.length > 0) {
           setData(prev => ({
             ...prev,
@@ -239,10 +232,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.error('[DATA] Instant load failed:', error)
       setError('Failed to load data')
-    } finally {
       setLoading(false)
     }
-  }, [user, isAuthenticated, hasInitialized])
+  }, [user, isAuthenticated, initialized])
 
   // Load user progress from database (background operation)
   const loadUserProgressFromDatabase = async (username: string) => {
@@ -264,8 +256,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const refreshData = useCallback(async () => {
     console.log('[DATA] Manual refresh requested')
-    setHasInitialized(false)
-    await instantLoad()
+    setInitialized(false)
+    instantLoad()
   }, [instantLoad])
 
   const updateUserProgress = useCallback(async (lessonId: string, score: number, completed: boolean) => {
@@ -325,17 +317,20 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Initialize data when user becomes authenticated
   useEffect(() => {
-    if (isAuthenticated && user && !hasInitialized) {
-      instantLoad()
+    if (isAuthenticated && user && !initialized) {
+      // Use setTimeout to prevent any potential race conditions
+      setTimeout(() => {
+        instantLoad()
+      }, 0)
     } else if (!isAuthenticated) {
       // Reset everything when user logs out
       setData(defaultData)
       setIsDataReady(false)
       setProgress(0)
-      setHasInitialized(false)
+      setInitialized(false)
       setLoading(false)
     }
-  }, [isAuthenticated, user, hasInitialized, instantLoad])
+  }, [isAuthenticated, user, initialized, instantLoad])
 
   const value = {
     data,
