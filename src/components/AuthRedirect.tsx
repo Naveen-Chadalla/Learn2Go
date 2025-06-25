@@ -36,7 +36,7 @@ const AuthRedirect: React.FC<AuthRedirectProps> = ({ children }) => {
     }
   }, [isAuthenticated, loading, location.pathname, navigate, user])
 
-  // SIMPLIFIED loading screen - no complex messages
+  // SIMPLIFIED loading screen - no blinking
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50">

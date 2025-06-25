@@ -106,7 +106,6 @@ interface DataContextType {
   refreshData: () => Promise<void>
   updateUserProgress: (lessonId: string, score: number, completed: boolean) => Promise<void>
   isDataReady: boolean
-  needsInitialization: boolean
   cacheStats: any
   clearCache: () => void
 }
@@ -160,23 +159,21 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [progress, setProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [isDataReady, setIsDataReady] = useState(false)
-  const [needsInitialization, setNeedsInitialization] = useState(false)
+  const [hasInitialized, setHasInitialized] = useState(false)
 
-  // INSTANT LOADING - Skip initialization completely
+  // INSTANT LOADING - No delays, no complex operations
   const instantLoad = useCallback(async () => {
-    if (!user || !isAuthenticated) {
-      setIsDataReady(false)
+    if (!user || !isAuthenticated || hasInitialized) {
       return
     }
 
+    console.log('[DATA] Starting instant load...')
     setLoading(true)
     setError(null)
+    setProgress(25)
     
     try {
-      console.log('[DATA] INSTANT LOAD - Using default content')
-      
-      // Step 1: Create user profile instantly (25%)
-      setProgress(25)
+      // Create user profile instantly
       const userProfile = {
         username: user.user_metadata?.username || user.email?.split('@')[0] || 'user',
         email: user.email || 'user@example.com',
@@ -191,24 +188,27 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         session_end: ''
       }
 
-      // Step 2: Load default lessons instantly (50%)
       setProgress(50)
+
+      // Load default lessons instantly
       const lessons = getDefaultLessons(userProfile.country, userProfile.language)
-
-      // Step 3: Load user progress from database (75%)
+      
       setProgress(75)
-      const userProgress = await loadUserProgressFromDatabase(userProfile.username)
 
-      // Step 4: Calculate analytics and finalize (100%)
-      setProgress(100)
-      const analytics = calculateAnalytics(userProgress, lessons)
-      const badges = generateBadges(userProgress, lessons)
+      // Load user progress in background (non-blocking)
+      const userProgressPromise = loadUserProgressFromDatabase(userProfile.username)
+      
+      // Calculate analytics with empty progress first
+      const analytics = calculateAnalytics([], lessons)
+      const badges = generateBadges([], lessons)
       const countryTheme = getCountryTheme(userProfile.country)
+
+      setProgress(100)
 
       const finalData = {
         userProfile,
         lessons,
-        userProgress,
+        userProgress: [], // Will be updated when loaded
         badges,
         games: getDefaultGames(),
         analytics,
@@ -220,9 +220,21 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       setData(finalData)
       setIsDataReady(true)
-      setNeedsInitialization(false) // Never show initialization screen
+      setHasInitialized(true)
       
-      console.log('[DATA] INSTANT LOAD completed in <1 second')
+      console.log('[DATA] Instant load completed')
+
+      // Update with real progress data when available
+      userProgressPromise.then(userProgress => {
+        if (userProgress.length > 0) {
+          setData(prev => ({
+            ...prev,
+            userProgress,
+            analytics: calculateAnalytics(userProgress, lessons),
+            badges: generateBadges(userProgress, lessons)
+          }))
+        }
+      }).catch(console.warn)
 
     } catch (error) {
       console.error('[DATA] Instant load failed:', error)
@@ -230,9 +242,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setLoading(false)
     }
-  }, [user, isAuthenticated])
+  }, [user, isAuthenticated, hasInitialized])
 
-  // Load user progress from database
+  // Load user progress from database (background operation)
   const loadUserProgressFromDatabase = async (username: string) => {
     try {
       const { data: progress, error } = await supabase
@@ -240,10 +252,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .select('*')
         .eq('username', username)
         .order('completed_at', { ascending: false })
-        .limit(20) // Limit for performance
+        .limit(20)
 
       if (error) throw error
-
       return progress || []
     } catch (error) {
       console.warn('[DATA] Failed to load user progress:', error)
@@ -253,6 +264,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const refreshData = useCallback(async () => {
     console.log('[DATA] Manual refresh requested')
+    setHasInitialized(false)
     await instantLoad()
   }, [instantLoad])
 
@@ -311,17 +323,19 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { size: 0, keys: [], totalMemory: 0 }
   }, [])
 
-  // INSTANT LOADING - No initialization needed
+  // Initialize data when user becomes authenticated
   useEffect(() => {
-    if (isAuthenticated && user && !isDataReady) {
+    if (isAuthenticated && user && !hasInitialized) {
       instantLoad()
     } else if (!isAuthenticated) {
+      // Reset everything when user logs out
       setData(defaultData)
       setIsDataReady(false)
       setProgress(0)
-      setNeedsInitialization(false)
+      setHasInitialized(false)
+      setLoading(false)
     }
-  }, [isAuthenticated, user, isDataReady, instantLoad])
+  }, [isAuthenticated, user, hasInitialized, instantLoad])
 
   const value = {
     data,
@@ -331,7 +345,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     refreshData,
     updateUserProgress,
     isDataReady,
-    needsInitialization, // Always false now
     cacheStats: getCacheStats(),
     clearCache
   }

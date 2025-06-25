@@ -11,19 +11,8 @@ const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
   const { isAuthenticated, user, loading: authLoading } = useAuth()
   const { loading: dataLoading, progress, isDataReady, data, error } = useData()
 
-  // Show loading animation ONLY when:
-  // 1. Auth is still loading, OR
-  // 2. User is authenticated but data is not ready yet
-  const shouldShowLoading = authLoading || (isAuthenticated && !isDataReady && dataLoading)
-
-  if (shouldShowLoading) {
-    return (
-      <LoadingAnimation 
-        progress={authLoading ? 10 : progress} 
-        country={user?.user_metadata?.country || data.userProfile?.country || 'US'}
-      />
-    )
-  }
+  // SIMPLIFIED: Only show loading when absolutely necessary
+  const shouldShowLoading = authLoading || (isAuthenticated && dataLoading && !isDataReady)
 
   // Show error state if data loading failed
   if (isAuthenticated && error && !isDataReady) {
@@ -46,6 +35,17 @@ const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
     )
   }
 
+  // ONLY show loading animation when truly needed
+  if (shouldShowLoading) {
+    return (
+      <LoadingAnimation 
+        progress={authLoading ? 25 : Math.max(progress, 25)} 
+        country={user?.user_metadata?.country || data.userProfile?.country || 'US'}
+      />
+    )
+  }
+
+  // Always render children when not loading
   return <>{children}</>
 }
 
