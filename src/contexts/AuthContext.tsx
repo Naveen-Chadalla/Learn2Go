@@ -205,18 +205,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         password: tempPassword 
       })
 
-      if (error && (
-        error.message.includes('Invalid login credentials') ||
-        error.message.includes('invalid_credentials') ||
-        error.code === 'invalid_credentials'
-      )) {
-        logDebugInfo('User not found during sign in', error)
-        return { data: null, error: { message: 'User not found. Please sign up first.' } }
-      }
-
+      // Consolidated error handling
       if (error) {
         logDebugInfo('Sign in error', error)
-        return { data: null, error }
+        
+        // Check for invalid credentials specifically
+        if (error.message.includes('Invalid login credentials') ||
+            error.message.includes('invalid_credentials') ||
+            error.code === 'invalid_credentials') {
+          return { data: null, error: { message: 'User not found. Please sign up first.' } }
+        }
+        
+        // Return the original error with a proper message
+        return { 
+          data: null, 
+          error: { 
+            message: error.message || 'An error occurred during sign in.' 
+          } 
+        }
       }
 
       logDebugInfo('Sign in successful', { username })
