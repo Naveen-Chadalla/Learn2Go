@@ -1,8 +1,8 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useLanguage } from '../contexts/LanguageContext'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { 
   BookOpen, 
   TrendingUp, 
@@ -13,12 +13,21 @@ import {
   CheckCircle,
   Car,
   AlertTriangle,
-  Eye
+  Eye,
+  X,
+  Shield,
+  Users,
+  BarChart3,
+  Heart,
+  Target,
+  Zap,
+  Clock
 } from 'lucide-react'
 
 const Home: React.FC = () => {
   const { user, isAuthenticated } = useAuth()
   const { t } = useLanguage()
+  const [showLearnMore, setShowLearnMore] = useState(false)
 
   // If user is authenticated, this component won't render due to AuthRedirect
   // But we keep the check for safety
@@ -59,14 +68,87 @@ const Home: React.FC = () => {
   const stats = [
     { label: 'Traffic Lessons', value: '100+', icon: <BookOpen className="h-6 w-6" /> },
     { label: 'Success Rate', value: '98%', icon: <CheckCircle className="h-6 w-6" /> },
-    { label: 'Languages', value: '3', icon: <Globe className="h-6 w-6" /> }
+    { label: 'Languages', value: '12+', icon: <Globe className="h-6 w-6" /> }
+  ]
+
+  const projectImportance = {
+    why: [
+      {
+        icon: <AlertTriangle className="h-6 w-6 text-red-500" />,
+        title: "Road Safety Crisis",
+        description: "Over 1.35 million people die in road traffic crashes annually worldwide, with millions more injured."
+      },
+      {
+        icon: <Users className="h-6 w-6 text-blue-500" />,
+        title: "Education Gap",
+        description: "Many drivers lack proper traffic safety education, leading to preventable accidents and fatalities."
+      },
+      {
+        icon: <Globe className="h-6 w-6 text-green-500" />,
+        title: "Global Impact",
+        description: "Road traffic injuries are the leading cause of death for children and young adults aged 5-29 years."
+      }
+    ],
+    how: [
+      {
+        icon: <Brain className="h-6 w-6 text-purple-500" />,
+        title: "AI-Powered Learning",
+        description: "Personalized content generation based on your country's specific traffic rules and regulations."
+      },
+      {
+        icon: <Target className="h-6 w-6 text-orange-500" />,
+        title: "Interactive Training",
+        description: "Engaging quizzes, simulations, and real-world scenarios to reinforce learning."
+      },
+      {
+        icon: <BarChart3 className="h-6 w-6 text-cyan-500" />,
+        title: "Progress Tracking",
+        description: "Comprehensive analytics to monitor learning progress and identify areas for improvement."
+      }
+    ],
+    impact: [
+      {
+        icon: <Shield className="h-6 w-6 text-green-600" />,
+        title: "Accident Reduction",
+        description: "Studies show that proper traffic education can reduce accidents by up to 40%."
+      },
+      {
+        icon: <Heart className="h-6 w-6 text-red-500" />,
+        title: "Lives Saved",
+        description: "Every educated driver contributes to safer roads and potentially saves lives."
+      },
+      {
+        icon: <Zap className="h-6 w-6 text-yellow-500" />,
+        title: "Behavioral Change",
+        description: "Long-term positive impact on driving behavior and road safety culture."
+      }
+    ]
+  }
+
+  const supportedLanguages = [
+    { name: 'English', flag: '🇺🇸', regions: ['US', 'GB', 'AU', 'CA'] },
+    { name: 'Hindi', flag: '🇮🇳', regions: ['IN'] },
+    { name: 'Telugu', flag: '🇮🇳', regions: ['IN'] },
+    { name: 'Tamil', flag: '🇮🇳', regions: ['IN'] },
+    { name: 'Bengali', flag: '🇮🇳', regions: ['IN'] },
+    { name: 'Marathi', flag: '🇮🇳', regions: ['IN'] },
+    { name: 'Gujarati', flag: '🇮🇳', regions: ['IN'] },
+    { name: 'Kannada', flag: '🇮🇳', regions: ['IN'] },
+    { name: 'Malayalam', flag: '🇮🇳', regions: ['IN'] },
+    { name: 'Punjabi', flag: '🇮🇳', regions: ['IN'] },
+    { name: 'Spanish', flag: '🇪🇸', regions: ['ES', 'MX', 'US'] },
+    { name: 'French', flag: '🇫🇷', regions: ['FR', 'CA'] },
+    { name: 'German', flag: '🇩🇪', regions: ['DE'] },
+    { name: 'Portuguese', flag: '🇧🇷', regions: ['BR'] },
+    { name: 'Chinese', flag: '🇨🇳', regions: ['CN'] },
+    { name: 'Japanese', flag: '🇯🇵', regions: ['JP'] }
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
       {/* Hero Section */}
       <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 to-purple-600/10"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 to-green-600/10"></div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 relative">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -75,12 +157,26 @@ const Home: React.FC = () => {
             className="text-center"
           >
             <div className="flex justify-center mb-8">
-              <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-6 rounded-3xl">
-                <BookOpen className="h-16 w-16 text-white" />
+              <div className="relative">
+                <img 
+                  src="/src/assets/ChatGPT Image Jun 21, 2025, 03_33_49 PM copy.png" 
+                  alt="Learn2Go Logo" 
+                  className="h-24 w-auto"
+                  onError={(e) => {
+                    // Fallback to gradient logo if image fails to load
+                    e.currentTarget.style.display = 'none'
+                    e.currentTarget.nextElementSibling?.classList.remove('hidden')
+                  }}
+                />
+                <div className="hidden bg-gradient-to-r from-blue-500 to-green-600 p-6 rounded-3xl">
+                  <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center">
+                    <div className="w-6 h-6 bg-gradient-to-b from-red-500 via-yellow-500 to-green-500 rounded-full"></div>
+                  </div>
+                </div>
               </div>
             </div>
             <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
-              <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">
                 {t('home.title')}
               </span>
             </h1>
@@ -94,12 +190,15 @@ const Home: React.FC = () => {
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <Link
                 to="/signup"
-                className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-8 py-4 rounded-2xl font-semibold hover:from-blue-600 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl flex items-center space-x-2"
+                className="bg-gradient-to-r from-blue-500 to-green-600 text-white px-8 py-4 rounded-2xl font-semibold hover:from-blue-600 hover:to-green-700 transition-all duration-200 shadow-lg hover:shadow-xl flex items-center space-x-2"
               >
                 <span>{t('home.getStarted')}</span>
                 <ArrowRight className="h-5 w-5" />
               </Link>
-              <button className="border-2 border-gray-300 text-gray-700 px-8 py-4 rounded-2xl font-semibold hover:border-gray-400 hover:bg-gray-50 transition-all duration-200">
+              <button 
+                onClick={() => setShowLearnMore(true)}
+                className="border-2 border-gray-300 text-gray-700 px-8 py-4 rounded-2xl font-semibold hover:border-gray-400 hover:bg-gray-50 transition-all duration-200"
+              >
                 {t('home.learnMore')}
               </button>
             </div>
@@ -115,7 +214,7 @@ const Home: React.FC = () => {
             {stats.map((stat, index) => (
               <div key={index} className="text-center">
                 <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-shadow">
-                  <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl p-3 w-fit mx-auto mb-4">
+                  <div className="bg-gradient-to-r from-blue-500 to-green-600 rounded-xl p-3 w-fit mx-auto mb-4">
                     <div className="text-white">{stat.icon}</div>
                   </div>
                   <div className="text-2xl font-bold text-gray-900 mb-2">{stat.value}</div>
@@ -166,8 +265,60 @@ const Home: React.FC = () => {
         </div>
       </section>
 
-      {/* Safety Focus Section */}
+      {/* Language Support Section */}
       <section className="py-20 bg-gradient-to-br from-gray-50 to-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            viewport={{ once: true }}
+            className="text-center mb-16"
+          >
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+              Global Language Support
+            </h2>
+            <p className="text-lg text-gray-600 max-w-3xl mx-auto mb-8">
+              Learn traffic safety in your native language. We support <span className="font-bold text-blue-600">{supportedLanguages.length}+ languages</span> across multiple countries and regions.
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+            {supportedLanguages.map((lang, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, scale: 0.8 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3, delay: index * 0.05 }}
+                viewport={{ once: true }}
+                className="bg-white rounded-xl p-4 shadow-md hover:shadow-lg transition-all duration-200 text-center"
+              >
+                <div className="text-2xl mb-2">{lang.flag}</div>
+                <div className="text-sm font-medium text-gray-900">{lang.name}</div>
+              </motion.div>
+            ))}
+          </div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.3 }}
+            viewport={{ once: true }}
+            className="text-center mt-12"
+          >
+            <div className="bg-blue-50 rounded-2xl p-8 border border-blue-200">
+              <Globe className="h-12 w-12 text-blue-600 mx-auto mb-4" />
+              <h3 className="text-xl font-bold text-blue-900 mb-2">Localized Content</h3>
+              <p className="text-blue-800">
+                Each language includes country-specific traffic rules, road signs, and cultural context to ensure relevant and effective learning.
+              </p>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Safety Focus Section */}
+      <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -237,7 +388,7 @@ const Home: React.FC = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 bg-gradient-to-r from-blue-600 to-purple-600">
+      <section className="py-20 bg-gradient-to-r from-blue-600 to-green-600">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -261,6 +412,134 @@ const Home: React.FC = () => {
           </motion.div>
         </div>
       </section>
+
+      {/* Learn More Modal */}
+      <AnimatePresence>
+        {showLearnMore && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+            onClick={() => setShowLearnMore(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-8">
+                <div className="flex items-center justify-between mb-8">
+                  <h2 className="text-3xl font-bold text-gray-900">Why Learn2Go Matters</h2>
+                  <button
+                    onClick={() => setShowLearnMore(false)}
+                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  >
+                    <X className="h-6 w-6 text-gray-500" />
+                  </button>
+                </div>
+
+                <div className="space-y-12">
+                  {/* Why This Project */}
+                  <div>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+                      <AlertTriangle className="h-6 w-6 text-red-500 mr-2" />
+                      The Problem We're Solving
+                    </h3>
+                    <div className="grid md:grid-cols-3 gap-6">
+                      {projectImportance.why.map((item, index) => (
+                        <div key={index} className="bg-gray-50 rounded-xl p-6">
+                          <div className="flex items-center mb-3">
+                            {item.icon}
+                            <h4 className="font-semibold text-gray-900 ml-2">{item.title}</h4>
+                          </div>
+                          <p className="text-gray-600 text-sm">{item.description}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* How We Help */}
+                  <div>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+                      <Zap className="h-6 w-6 text-blue-500 mr-2" />
+                      How Learn2Go Helps
+                    </h3>
+                    <div className="grid md:grid-cols-3 gap-6">
+                      {projectImportance.how.map((item, index) => (
+                        <div key={index} className="bg-blue-50 rounded-xl p-6">
+                          <div className="flex items-center mb-3">
+                            {item.icon}
+                            <h4 className="font-semibold text-gray-900 ml-2">{item.title}</h4>
+                          </div>
+                          <p className="text-gray-600 text-sm">{item.description}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Impact */}
+                  <div>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+                      <Heart className="h-6 w-6 text-green-500 mr-2" />
+                      Our Impact
+                    </h3>
+                    <div className="grid md:grid-cols-3 gap-6">
+                      {projectImportance.impact.map((item, index) => (
+                        <div key={index} className="bg-green-50 rounded-xl p-6">
+                          <div className="flex items-center mb-3">
+                            {item.icon}
+                            <h4 className="font-semibold text-gray-900 ml-2">{item.title}</h4>
+                          </div>
+                          <p className="text-gray-600 text-sm">{item.description}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Statistics */}
+                  <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-2xl p-8">
+                    <h3 className="text-2xl font-bold text-gray-900 mb-6 text-center">
+                      By the Numbers
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+                      <div>
+                        <div className="text-3xl font-bold text-red-600 mb-2">1.35M</div>
+                        <div className="text-sm text-gray-600">Annual road deaths globally</div>
+                      </div>
+                      <div>
+                        <div className="text-3xl font-bold text-orange-600 mb-2">50M</div>
+                        <div className="text-sm text-gray-600">People injured annually</div>
+                      </div>
+                      <div>
+                        <div className="text-3xl font-bold text-green-600 mb-2">40%</div>
+                        <div className="text-sm text-gray-600">Accident reduction with proper education</div>
+                      </div>
+                      <div>
+                        <div className="text-3xl font-bold text-blue-600 mb-2">16+</div>
+                        <div className="text-sm text-gray-600">Languages supported</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-8 text-center">
+                  <Link
+                    to="/signup"
+                    onClick={() => setShowLearnMore(false)}
+                    className="bg-gradient-to-r from-blue-500 to-green-600 text-white px-8 py-3 rounded-xl font-semibold hover:from-blue-600 hover:to-green-700 transition-all duration-200 shadow-lg hover:shadow-xl inline-flex items-center space-x-2"
+                  >
+                    <span>Join the Movement</span>
+                    <ArrowRight className="h-5 w-5" />
+                  </Link>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

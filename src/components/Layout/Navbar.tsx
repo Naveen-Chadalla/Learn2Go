@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { useLanguage } from '../../contexts/LanguageContext'
-import { BookOpen, Home, BarChart3, Settings, LogOut, User, Globe, AlertCircle } from 'lucide-react'
+import { Home, BarChart3, Settings, LogOut, User, Globe, AlertCircle } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 const Navbar: React.FC = () => {
@@ -62,11 +62,25 @@ const Navbar: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2">
-            <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-2 rounded-xl">
-              <BookOpen className="h-6 w-6 text-white" />
+          <Link to="/" className="flex items-center space-x-3">
+            <div className="relative">
+              <img 
+                src="/src/assets/ChatGPT Image Jun 21, 2025, 03_33_49 PM copy.png" 
+                alt="Learn2Go Logo" 
+                className="h-10 w-auto"
+                onError={(e) => {
+                  // Fallback to text logo if image fails to load
+                  e.currentTarget.style.display = 'none'
+                  e.currentTarget.nextElementSibling?.classList.remove('hidden')
+                }}
+              />
+              <div className="hidden bg-gradient-to-r from-blue-500 to-green-600 p-2 rounded-xl">
+                <div className="w-6 h-6 bg-white rounded flex items-center justify-center">
+                  <div className="w-3 h-3 bg-gradient-to-b from-red-500 via-yellow-500 to-green-500 rounded-full"></div>
+                </div>
+              </div>
             </div>
-            <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">
               Learn2Go
             </span>
           </Link>
@@ -147,7 +161,7 @@ const Navbar: React.FC = () => {
             {user ? (
               <div className="flex items-center space-x-4">
                 <div className="flex items-center space-x-2">
-                  <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                  <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-green-600 rounded-full flex items-center justify-center">
                     <User className="h-4 w-4 text-white" />
                   </div>
                   <span className="text-sm font-medium text-gray-700 hidden sm:inline">
@@ -184,7 +198,7 @@ const Navbar: React.FC = () => {
             ) : (
               <Link
                 to="/login"
-                className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-2 rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg"
+                className="bg-gradient-to-r from-blue-500 to-green-600 text-white px-4 py-2 rounded-lg hover:from-blue-600 hover:to-green-700 transition-all duration-200 shadow-md hover:shadow-lg"
               >
                 {t('nav.login')}
               </Link>
