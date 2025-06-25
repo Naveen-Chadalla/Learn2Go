@@ -41,7 +41,7 @@ class ActivityTracker {
         .select('is_active, login_time')
         .eq('session_token', this.currentSessionToken)
         .eq('is_active', true)
-        .single()
+        .maybeSingle()
 
       if (error || !data) return false
 
@@ -86,7 +86,7 @@ class ActivityTracker {
           .from('user_sessions')
           .select('session_token')
           .eq('session_token', sessionToken)
-          .single()
+          .maybeSingle()
 
         if (!existingSession) {
           break // Token is unique
