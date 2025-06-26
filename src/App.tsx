@@ -8,6 +8,7 @@ import ProtectedRoute from './components/ProtectedRoute'
 import AuthRedirect from './components/AuthRedirect'
 import DataLoader from './components/DataLoader'
 import Navbar from './components/Layout/Navbar'
+import AIAssistant from './components/AIAssistant'
 
 // Pages
 import Home from './pages/Home'
@@ -16,6 +17,7 @@ import Signup from './pages/Auth/Signup'
 import Dashboard from './pages/Dashboard'
 import LessonDetail from './pages/Lessons/LessonDetail'
 import Results from './pages/Results'
+import Leaderboard from './pages/Leaderboard'
 import AdminDashboard from './pages/Admin/AdminDashboard'
 
 // Activity tracking wrapper component
@@ -66,6 +68,14 @@ function App() {
                           </ProtectedRoute>
                         }
                       />
+                      <Route
+                        path="/leaderboard"
+                        element={
+                          <ProtectedRoute>
+                            <Leaderboard />
+                          </ProtectedRoute>
+                        }
+                      />
                       
                       {/* Admin only routes */}
                       <Route
@@ -77,6 +87,11 @@ function App() {
                         }
                       />
                     </Routes>
+                    
+                    {/* AI Assistant - Only show for authenticated users */}
+                    <ProtectedRoute requireAuth={false}>
+                      <AIAssistant />
+                    </ProtectedRoute>
                   </div>
                 </ActivityTrackingWrapper>
               </DataLoader>

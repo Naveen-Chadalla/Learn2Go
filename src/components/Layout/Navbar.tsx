@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { useLanguage } from '../../contexts/LanguageContext'
-import { Home, BarChart3, Settings, LogOut, User, Globe, AlertCircle } from 'lucide-react'
+import { BarChart3, Settings, LogOut, User, Globe, AlertCircle, Crown, Trophy, MessageCircle } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 const Navbar: React.FC = () => {
@@ -20,28 +20,21 @@ const Navbar: React.FC = () => {
     try {
       console.log('[LOGOUT] Starting instant logout...')
       
-      // INSTANT LOGOUT - no waiting for server operations
       const result = await signOut()
       
       console.log('[LOGOUT] Logout completed, redirecting immediately')
       
-      // Immediate redirect - don't wait for anything
       navigate('/', { replace: true })
       
-      // Show any non-critical errors after redirect
       if (result.error) {
         console.warn('[LOGOUT] Non-critical logout issue:', result.error)
-        // Don't show error to user since logout was successful
       }
       
     } catch (error) {
       console.error('[LOGOUT] Logout exception (forcing redirect):', error)
-      
-      // Force redirect even on error - user experience is priority
       navigate('/', { replace: true })
       
     } finally {
-      // Reset loading state after a brief delay
       setTimeout(() => {
         setIsLoggingOut(false)
         setLogoutError(null)
@@ -58,96 +51,109 @@ const Navbar: React.FC = () => {
   ]
 
   return (
-    <nav className="bg-white shadow-lg border-b border-gray-200 sticky top-0 z-50">
+    <nav className="bg-white/95 backdrop-blur-md shadow-lg border-b border-gray-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-3">
-            <div className="relative">
-              <img 
-                src="/src/assets/ChatGPT Image Jun 21, 2025, 03_33_49 PM copy.png" 
-                alt="Learn2Go Logo" 
-                className="h-10 w-auto"
-                onError={(e) => {
-                  // Fallback to text logo if image fails to load
-                  e.currentTarget.style.display = 'none'
-                  e.currentTarget.nextElementSibling?.classList.remove('hidden')
-                }}
-              />
-              <div className="hidden bg-gradient-to-r from-blue-500 to-green-600 p-2 rounded-xl">
-                <div className="w-6 h-6 bg-white rounded flex items-center justify-center">
-                  <div className="w-3 h-3 bg-gradient-to-b from-red-500 via-yellow-500 to-green-500 rounded-full"></div>
+          <Link to={user ? "/dashboard" : "/"} className="flex items-center space-x-3">
+            <motion.div 
+              className="relative"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <div className="bg-gradient-to-r from-blue-500 to-green-600 p-2 rounded-xl shadow-lg">
+                <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
+                  <div className="w-4 h-4 bg-gradient-to-b from-red-500 via-yellow-500 to-green-500 rounded-full"></div>
                 </div>
               </div>
-            </div>
+            </motion.div>
             <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">
               Learn2Go
             </span>
           </Link>
 
-          {/* Navigation Links */}
-          <div className="hidden md:flex items-center space-x-8">
-            <Link
-              to="/"
-              className={`flex items-center space-x-1 px-3 py-2 rounded-lg transition-colors ${
-                isActive('/') ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:text-blue-600'
-              }`}
-            >
-              <Home className="h-4 w-4" />
-              <span>{t('nav.home')}</span>
-            </Link>
+          {/* Navigation Links - Only show if user is logged in */}
+          {user && (
+            <div className="hidden md:flex items-center space-x-8">
+              <Link
+                to="/dashboard"
+                className={`flex items-center space-x-1 px-3 py-2 rounded-xl transition-all duration-200 ${
+                  isActive('/dashboard') 
+                    ? 'bg-gradient-to-r from-blue-500 to-green-600 text-white shadow-lg' 
+                    : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+                }`}
+              >
+                <BarChart3 className="h-4 w-4" />
+                <span>{t('nav.dashboard')}</span>
+              </Link>
 
-            {user && (
-              <>
+              <Link
+                to="/results"
+                className={`flex items-center space-x-1 px-3 py-2 rounded-xl transition-all duration-200 ${
+                  isActive('/results') 
+                    ? 'bg-gradient-to-r from-purple-500 to-pink-600 text-white shadow-lg' 
+                    : 'text-gray-600 hover:text-purple-600 hover:bg-purple-50'
+                }`}
+              >
+                <Trophy className="h-4 w-4" />
+                <span>{t('nav.results')}</span>
+              </Link>
+
+              <Link
+                to="/leaderboard"
+                className={`flex items-center space-x-1 px-3 py-2 rounded-xl transition-all duration-200 ${
+                  isActive('/leaderboard') 
+                    ? 'bg-gradient-to-r from-yellow-500 to-orange-600 text-white shadow-lg' 
+                    : 'text-gray-600 hover:text-yellow-600 hover:bg-yellow-50'
+                }`}
+              >
+                <Trophy className="h-4 w-4" />
+                <span>Leaderboard</span>
+              </Link>
+
+              {isAdmin && (
                 <Link
-                  to="/dashboard"
-                  className={`flex items-center space-x-1 px-3 py-2 rounded-lg transition-colors ${
-                    isActive('/dashboard') ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:text-blue-600'
+                  to="/admin"
+                  className={`flex items-center space-x-1 px-3 py-2 rounded-xl transition-all duration-200 ${
+                    isActive('/admin') 
+                      ? 'bg-gradient-to-r from-red-500 to-pink-600 text-white shadow-lg' 
+                      : 'text-gray-600 hover:text-red-600 hover:bg-red-50'
                   }`}
                 >
-                  <BarChart3 className="h-4 w-4" />
-                  <span>{t('nav.dashboard')}</span>
+                  <Crown className="h-4 w-4" />
+                  <span>{t('nav.admin')}</span>
                 </Link>
-
-                <Link
-                  to="/results"
-                  className={`flex items-center space-x-1 px-3 py-2 rounded-lg transition-colors ${
-                    isActive('/results') ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:text-blue-600'
-                  }`}
-                >
-                  <BarChart3 className="h-4 w-4" />
-                  <span>{t('nav.results')}</span>
-                </Link>
-
-                {isAdmin && (
-                  <Link
-                    to="/admin"
-                    className={`flex items-center space-x-1 px-3 py-2 rounded-lg transition-colors ${
-                      isActive('/admin') ? 'bg-red-50 text-red-600' : 'text-gray-600 hover:text-red-600'
-                    }`}
-                  >
-                    <Settings className="h-4 w-4" />
-                    <span>{t('nav.admin')}</span>
-                  </Link>
-                )}
-              </>
-            )}
-          </div>
+              )}
+            </div>
+          )}
 
           {/* Right Side */}
           <div className="flex items-center space-x-4">
+            {/* AI Chat Assistant Button */}
+            {user && (
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="relative p-2 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
+                title="AI Assistant"
+              >
+                <MessageCircle className="h-5 w-5" />
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+              </motion.button>
+            )}
+
             {/* Language Selector */}
             <div className="relative group">
-              <button className="flex items-center space-x-1 px-3 py-2 rounded-lg text-gray-600 hover:text-blue-600 transition-colors">
+              <button className="flex items-center space-x-1 px-3 py-2 rounded-xl text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200">
                 <Globe className="h-4 w-4" />
                 <span className="hidden sm:inline">{languages.find(l => l.code === language)?.flag}</span>
               </button>
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
                 {languages.map((lang) => (
                   <button
                     key={lang.code}
                     onClick={() => setLanguage(lang.code)}
-                    className={`w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center space-x-2 ${
+                    className={`w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center space-x-2 first:rounded-t-xl last:rounded-b-xl transition-colors ${
                       language === lang.code ? 'bg-blue-50 text-blue-600' : 'text-gray-700'
                     }`}
                   >
@@ -160,16 +166,34 @@ const Navbar: React.FC = () => {
 
             {user ? (
               <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-2">
-                  <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-green-600 rounded-full flex items-center justify-center">
-                    <User className="h-4 w-4 text-white" />
+                <div className="flex items-center space-x-3">
+                  <motion.div 
+                    className="relative"
+                    whileHover={{ scale: 1.05 }}
+                  >
+                    <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-green-600 rounded-full flex items-center justify-center shadow-lg">
+                      {isAdmin ? (
+                        <Crown className="h-5 w-5 text-white" />
+                      ) : (
+                        <User className="h-5 w-5 text-white" />
+                      )}
+                    </div>
+                    {isAdmin && (
+                      <div className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-500 rounded-full flex items-center justify-center">
+                        <Crown className="h-2 w-2 text-white" />
+                      </div>
+                    )}
+                  </motion.div>
+                  <div className="hidden sm:block">
+                    <div className="text-sm font-medium text-gray-700">
+                      {user.user_metadata?.username || user.email?.split('@')[0]}
+                    </div>
+                    {isAdmin && (
+                      <div className="text-xs text-yellow-600 font-medium">Administrator</div>
+                    )}
                   </div>
-                  <span className="text-sm font-medium text-gray-700 hidden sm:inline">
-                    {user.user_metadata?.username || user.email?.split('@')[0]}
-                  </span>
                 </div>
 
-                {/* Logout Error Display */}
                 {logoutError && (
                   <div className="flex items-center space-x-1 text-red-600 text-sm">
                     <AlertCircle className="h-4 w-4" />
@@ -177,10 +201,12 @@ const Navbar: React.FC = () => {
                   </div>
                 )}
 
-                <button
+                <motion.button
                   onClick={handleSignOut}
                   disabled={isLoggingOut}
-                  className="flex items-center space-x-1 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="flex items-center space-x-1 px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md"
                 >
                   {isLoggingOut ? (
                     <>
@@ -193,12 +219,12 @@ const Navbar: React.FC = () => {
                       <span className="hidden sm:inline">{t('nav.logout')}</span>
                     </>
                   )}
-                </button>
+                </motion.button>
               </div>
             ) : (
               <Link
                 to="/login"
-                className="bg-gradient-to-r from-blue-500 to-green-600 text-white px-4 py-2 rounded-lg hover:from-blue-600 hover:to-green-700 transition-all duration-200 shadow-md hover:shadow-lg"
+                className="bg-gradient-to-r from-blue-500 to-green-600 text-white px-6 py-2 rounded-xl hover:from-blue-600 hover:to-green-700 transition-all duration-200 shadow-lg hover:shadow-xl font-medium"
               >
                 {t('nav.login')}
               </Link>
@@ -209,12 +235,12 @@ const Navbar: React.FC = () => {
 
       {/* Mobile Navigation */}
       {user && (
-        <div className="md:hidden border-t border-gray-200 bg-white">
+        <div className="md:hidden border-t border-gray-200 bg-white/95 backdrop-blur-md">
           <div className="px-4 py-2 flex justify-around">
             <Link
               to="/dashboard"
-              className={`flex flex-col items-center py-2 px-3 rounded-lg ${
-                isActive('/dashboard') ? 'text-blue-600' : 'text-gray-600'
+              className={`flex flex-col items-center py-2 px-3 rounded-xl transition-all duration-200 ${
+                isActive('/dashboard') ? 'text-blue-600 bg-blue-50' : 'text-gray-600'
               }`}
             >
               <BarChart3 className="h-5 w-5" />
@@ -222,21 +248,30 @@ const Navbar: React.FC = () => {
             </Link>
             <Link
               to="/results"
-              className={`flex flex-col items-center py-2 px-3 rounded-lg ${
-                isActive('/results') ? 'text-blue-600' : 'text-gray-600'
+              className={`flex flex-col items-center py-2 px-3 rounded-xl transition-all duration-200 ${
+                isActive('/results') ? 'text-purple-600 bg-purple-50' : 'text-gray-600'
               }`}
             >
-              <BarChart3 className="h-5 w-5" />
+              <Trophy className="h-5 w-5" />
               <span className="text-xs mt-1">{t('nav.results')}</span>
+            </Link>
+            <Link
+              to="/leaderboard"
+              className={`flex flex-col items-center py-2 px-3 rounded-xl transition-all duration-200 ${
+                isActive('/leaderboard') ? 'text-yellow-600 bg-yellow-50' : 'text-gray-600'
+              }`}
+            >
+              <Trophy className="h-5 w-5" />
+              <span className="text-xs mt-1">Leaderboard</span>
             </Link>
             {isAdmin && (
               <Link
                 to="/admin"
-                className={`flex flex-col items-center py-2 px-3 rounded-lg ${
-                  isActive('/admin') ? 'text-red-600' : 'text-gray-600'
+                className={`flex flex-col items-center py-2 px-3 rounded-xl transition-all duration-200 ${
+                  isActive('/admin') ? 'text-red-600 bg-red-50' : 'text-gray-600'
                 }`}
               >
-                <Settings className="h-5 w-5" />
+                <Crown className="h-5 w-5" />
                 <span className="text-xs mt-1">{t('nav.admin')}</span>
               </Link>
             )}

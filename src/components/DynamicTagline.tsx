@@ -198,7 +198,7 @@ const DynamicTagline: React.FC<TaglineProps> = ({
       countrySpecificTaglines.push(
         userLanguage === 'hi' ? "भारत की सड़कों के लिए भारतीय नियम।" : "Indian rules for Indian roads.",
         userLanguage === 'hi' ? "सुरक्षित भारत, स्मार्ट ड्राइवर।" : "Safe India, Smart Drivers.",
-        userLanguage === 'te' ? "భారతీయ రోడ్లకు భారతీయ నियమాలు।" : "Indian rules for Indian roads."
+        userLanguage === 'te' ? "భారతీయ రోడ్లకు భారతీయ నియమాలు।" : "Indian rules for Indian roads."
       )
     } else if (userCountry === 'US') {
       countrySpecificTaglines.push(
@@ -276,7 +276,7 @@ const DynamicTagline: React.FC<TaglineProps> = ({
 
   return (
     <div className={`${className}`}>
-      <div className={`bg-gradient-to-r from-blue-50 to-green-50 border border-blue-200 rounded-xl ${config.container} flex items-center justify-between`}>
+      <div className={`bg-gradient-to-r from-blue-50 to-green-50 border border-blue-200 rounded-xl ${config.container} flex items-center justify-between shadow-sm`}>
         <AnimatePresence mode="wait">
           <motion.div
             key={currentTagline}
@@ -293,23 +293,18 @@ const DynamicTagline: React.FC<TaglineProps> = ({
         </AnimatePresence>
         
         {showRefreshButton && (
-          <button
+          <motion.button
             onClick={refreshTagline}
             disabled={isRefreshing}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
             className="ml-3 p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded-lg transition-all duration-200 disabled:opacity-50"
             title="Get new tagline"
           >
             <RefreshCw className={`${config.icon} ${isRefreshing ? 'animate-spin' : ''}`} />
-          </button>
+          </motion.button>
         )}
       </div>
-      
-      {/* Language indicator for debugging */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="text-xs text-gray-500 mt-1 text-center">
-          Language: {userLanguage} | Country: {userCountry}
-        </div>
-      )}
     </div>
   )
 }
