@@ -21,6 +21,7 @@ import {
   Sparkles
 } from 'lucide-react'
 import { getCountryByCode, getLanguageByCode } from '../types/countries'
+import DynamicTagline from '../components/DynamicTagline'
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth()
@@ -124,11 +125,25 @@ const Dashboard: React.FC = () => {
           </div>
         </motion.div>
 
-        {/* Country Theme Notice */}
+        {/* Dynamic Tagline */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.1 }}
+          className="mb-8"
+        >
+          <DynamicTagline 
+            showRefreshButton={true}
+            autoRefresh={true}
+            size="medium"
+          />
+        </motion.div>
+
+        {/* Country Theme Notice */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
           className="rounded-2xl p-4 mb-8 border-2"
           style={{
             background: `linear-gradient(135deg, ${countryTheme.primaryColor}15, ${countryTheme.secondaryColor}15)`,
@@ -157,7 +172,7 @@ const Dashboard: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
           className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
         >
           {stats.map((stat, index) => (
@@ -180,7 +195,7 @@ const Dashboard: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.3 }}
+          transition={{ duration: 0.6, delay: 0.4 }}
           className="bg-white rounded-2xl shadow-lg p-8 mb-8 border border-gray-100"
         >
           <div className="flex items-center justify-between mb-6">
@@ -244,7 +259,7 @@ const Dashboard: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.4 }}
+          transition={{ duration: 0.6, delay: 0.5 }}
           className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100"
         >
           <div className="flex items-center justify-between mb-6">

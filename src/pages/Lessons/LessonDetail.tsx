@@ -22,6 +22,7 @@ import {
   Sparkles
 } from 'lucide-react'
 import Confetti from 'react-confetti'
+import DynamicTagline from '../../components/DynamicTagline'
 
 interface QuizQuestion {
   id: string
@@ -308,6 +309,20 @@ const LessonDetail: React.FC = () => {
           </div>
         </motion.div>
 
+        {/* Dynamic Tagline */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.1 }}
+          className="mb-8"
+        >
+          <DynamicTagline 
+            showRefreshButton={false}
+            autoRefresh={false}
+            size="small"
+          />
+        </motion.div>
+
         {/* Topic Completed Screen */}
         <AnimatePresence>
           {topicCompleted && (
@@ -349,7 +364,7 @@ const LessonDetail: React.FC = () => {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.1 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
               className="bg-white rounded-2xl shadow-lg p-8 mb-8 border border-gray-100"
             >
               <div className="flex items-center justify-between mb-6">
@@ -442,7 +457,7 @@ const LessonDetail: React.FC = () => {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
               className="bg-gradient-to-r from-blue-50 to-green-50 rounded-2xl p-8 border border-blue-200 mb-8"
             >
               <div className="text-center">
