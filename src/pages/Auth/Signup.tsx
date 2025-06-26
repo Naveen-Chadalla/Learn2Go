@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { useLanguage } from '../../contexts/LanguageContext'
 import { motion } from 'framer-motion'
-import { BookOpen, User, ArrowRight, ArrowLeft, AlertCircle, CheckCircle, Crown } from 'lucide-react'
+import { BookOpen, User, ArrowRight, ArrowLeft, AlertCircle, CheckCircle, Crown, Shield } from 'lucide-react'
 import CountryLanguageSelector from '../../components/CountryLanguageSelector'
 
 const Signup: React.FC = () => {
@@ -31,7 +31,7 @@ const Signup: React.FC = () => {
     }
   }, [isAuthenticated, navigate])
 
-  // Real-time username availability checking
+  // Enhanced username validation with real-time checking
   useEffect(() => {
     const checkUsername = async () => {
       if (username.length >= 3) {
@@ -61,17 +61,27 @@ const Signup: React.FC = () => {
     return () => clearTimeout(debounceTimer)
   }, [username, checkUsernameAvailability])
 
+  // Enhanced username validation
+  const validateUsername = (value: string) => {
+    if (!value || value.length < 3) {
+      return 'Username must be at least 3 characters long'
+    }
+    if (value.length > 20) {
+      return 'Username must be less than 20 characters'
+    }
+    if (!/^[a-zA-Z0-9_]+$/.test(value)) {
+      return 'Username can only contain letters, numbers, and underscores'
+    }
+    return null
+  }
+
   const handleUsernameSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
 
-    if (!username.trim()) {
-      setError('Username is required')
-      return
-    }
-
-    if (username.trim().length < 3) {
-      setError('Username must be at least 3 characters long')
+    const validationError = validateUsername(username.trim())
+    if (validationError) {
+      setError(validationError)
       return
     }
 
@@ -123,7 +133,7 @@ const Signup: React.FC = () => {
   const isAdminUser = username.toLowerCase() === 'hari'
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -133,30 +143,43 @@ const Signup: React.FC = () => {
         {/* Header */}
         <div className="text-center">
           <div className="flex justify-center mb-6">
-            <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-4 rounded-2xl">
-              <BookOpen className="h-8 w-8 text-white" />
+            <div className="relative">
+              <img 
+                src="/src/assets/ChatGPT Image Jun 21, 2025, 03_33_49 PM copy.png" 
+                alt="Learn2Go Logo" 
+                className="h-16 w-auto"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none'
+                  e.currentTarget.nextElementSibling?.classList.remove('hidden')
+                }}
+              />
+              <div className="hidden bg-gradient-to-r from-blue-500 to-green-600 p-4 rounded-2xl">
+                <div className="w-8 h-8 bg-white rounded-xl flex items-center justify-center">
+                  <div className="w-4 h-4 bg-gradient-to-b from-red-500 via-yellow-500 to-green-500 rounded-full"></div>
+                </div>
+              </div>
             </div>
           </div>
           <h2 className="text-3xl font-bold text-gray-900 mb-2">
             {t('auth.signup')}
           </h2>
           <p className="text-gray-600">
-            {step === 1 ? 'Choose your username' : 'Select your location and language'}
+            {step === 1 ? 'Choose your unique username' : 'Select your location and language preferences'}
           </p>
         </div>
 
-        {/* Progress Indicator */}
+        {/* Enhanced Progress Indicator */}
         <div className="flex items-center justify-center space-x-4 mb-8">
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-300 ${
-            step >= 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
+          <div className={`flex items-center justify-center w-10 h-10 rounded-full text-sm font-medium transition-all duration-300 ${
+            step >= 1 ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-200 text-gray-600'
           }`}>
-            1
+            {step > 1 ? <CheckCircle className="h-5 w-5" /> : '1'}
           </div>
-          <div className={`w-16 h-1 rounded transition-all duration-300 ${step >= 2 ? 'bg-blue-600' : 'bg-gray-200'}`}></div>
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-300 ${
-            step >= 2 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
+          <div className={`w-20 h-1 rounded transition-all duration-300 ${step >= 2 ? 'bg-blue-600' : 'bg-gray-200'}`}></div>
+          <div className={`flex items-center justify-center w-10 h-10 rounded-full text-sm font-medium transition-all duration-300 ${
+            step >= 2 ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-200 text-gray-600'
           }`}>
-            2
+            {step > 2 ? <CheckCircle className="h-5 w-5" /> : '2'}
           </div>
         </div>
 
@@ -166,14 +189,15 @@ const Signup: React.FC = () => {
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-6"
+              className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-6 flex items-center space-x-2"
             >
-              {error}
+              <AlertCircle className="h-5 w-5 flex-shrink-0" />
+              <span>{error}</span>
             </motion.div>
           )}
 
           {step === 1 ? (
-            /* Step 1: Username */
+            /* Step 1: Enhanced Username Input */
             <form onSubmit={handleUsernameSubmit} className="space-y-6">
               {/* Admin User Detection */}
               {isAdminUser && (
@@ -187,14 +211,14 @@ const Signup: React.FC = () => {
                     <span className="font-medium text-purple-800">Admin Account Setup</span>
                   </div>
                   <p className="text-purple-700 text-sm mt-1">
-                    Setting up admin account with full dashboard access.
+                    Setting up admin account with full dashboard access and user management capabilities.
                   </p>
                 </motion.div>
               )}
 
               <div>
                 <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
-                  {t('auth.username')}
+                  {t('auth.username')} <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -209,9 +233,10 @@ const Signup: React.FC = () => {
                     onChange={(e) => setUsername(e.target.value)}
                     className="appearance-none relative block w-full pl-10 pr-12 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:z-10 transition-all duration-200"
                     placeholder={t('auth.enterUsername')}
+                    maxLength={20}
                   />
                   
-                  {/* Username Status Indicator */}
+                  {/* Enhanced Status Indicator */}
                   <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
                     {isCheckingUsername && (
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
@@ -228,31 +253,71 @@ const Signup: React.FC = () => {
                   </div>
                 </div>
                 
-                {/* Username Status Message */}
+                {/* Character Counter */}
+                <div className="flex justify-between items-center mt-2">
+                  <div className="text-xs text-gray-500">
+                    {username.length}/20 characters
+                  </div>
+                  {username.length > 0 && (
+                    <div className={`text-xs ${username.length <= 20 ? 'text-green-600' : 'text-red-600'}`}>
+                      {username.length <= 20 ? '✓ Valid length' : '✗ Too long'}
+                    </div>
+                  )}
+                </div>
+                
+                {/* Enhanced Status Message */}
                 {usernameStatus.checked && username.length >= 3 && (
-                  <motion.p
+                  <motion.div
                     initial={{ opacity: 0, y: -5 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className={`mt-2 text-sm ${
-                      usernameStatus.available ? 'text-green-600' : 'text-red-600'
+                    className={`mt-3 p-3 rounded-lg border ${
+                      usernameStatus.available 
+                        ? 'bg-green-50 border-green-200 text-green-700' 
+                        : 'bg-red-50 border-red-200 text-red-700'
                     }`}
                   >
-                    {usernameStatus.message}
-                  </motion.p>
+                    <div className="flex items-center space-x-2">
+                      {usernameStatus.available ? (
+                        <CheckCircle className="h-4 w-4" />
+                      ) : (
+                        <AlertCircle className="h-4 w-4" />
+                      )}
+                      <span className="text-sm font-medium">{usernameStatus.message}</span>
+                    </div>
+                  </motion.div>
                 )}
                 
-                <p className="mt-2 text-sm text-gray-500">
-                  Choose a unique username (minimum 3 characters, letters, numbers, and underscores only)
-                </p>
+                {/* Username Requirements */}
+                <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                  <p className="text-xs font-medium text-gray-700 mb-2">Username Requirements:</p>
+                  <ul className="text-xs text-gray-600 space-y-1">
+                    <li className={`flex items-center space-x-1 ${username.length >= 3 ? 'text-green-600' : ''}`}>
+                      <span>{username.length >= 3 ? '✓' : '•'}</span>
+                      <span>At least 3 characters long</span>
+                    </li>
+                    <li className={`flex items-center space-x-1 ${username.length <= 20 ? 'text-green-600' : 'text-red-600'}`}>
+                      <span>{username.length <= 20 ? '✓' : '✗'}</span>
+                      <span>Maximum 20 characters</span>
+                    </li>
+                    <li className={`flex items-center space-x-1 ${/^[a-zA-Z0-9_]*$/.test(username) ? 'text-green-600' : username.length > 0 ? 'text-red-600' : ''}`}>
+                      <span>{/^[a-zA-Z0-9_]*$/.test(username) && username.length > 0 ? '✓' : username.length > 0 ? '✗' : '•'}</span>
+                      <span>Only letters, numbers, and underscores</span>
+                    </li>
+                    <li className={`flex items-center space-x-1 ${usernameStatus.available && usernameStatus.checked ? 'text-green-600' : ''}`}>
+                      <span>{usernameStatus.available && usernameStatus.checked ? '✓' : '•'}</span>
+                      <span>Must be unique</span>
+                    </li>
+                  </ul>
+                </div>
               </div>
 
               <button
                 type="submit"
                 disabled={!usernameStatus.available || !usernameStatus.checked || username.length < 3}
-                className="group relative w-full flex justify-center items-center space-x-2 py-3 px-4 border border-transparent text-sm font-medium rounded-xl text-white bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl"
+                className="group relative w-full flex justify-center items-center space-x-2 py-3 px-4 border border-transparent text-sm font-medium rounded-xl text-white bg-gradient-to-r from-blue-500 to-green-600 hover:from-blue-600 hover:to-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl"
               >
                 {isAdminUser && <Crown className="h-4 w-4" />}
-                <span>Continue</span>
+                <span>Continue to Location Setup</span>
                 <ArrowRight className="h-4 w-4" />
               </button>
 
@@ -266,7 +331,7 @@ const Signup: React.FC = () => {
               </div>
             </form>
           ) : (
-            /* Step 2: Country and Language */
+            /* Step 2: Enhanced Country and Language Selection */
             <div className="space-y-6">
               {isAdminUser && (
                 <motion.div
@@ -279,7 +344,7 @@ const Signup: React.FC = () => {
                     <span className="font-medium text-purple-800">Admin Setup - Final Step</span>
                   </div>
                   <p className="text-purple-700 text-sm mt-1">
-                    Complete your admin account setup with location preferences.
+                    Complete your admin account setup with location preferences for content customization.
                   </p>
                 </motion.div>
               )}
@@ -302,7 +367,7 @@ const Signup: React.FC = () => {
                 <button
                   onClick={handleFinalSubmit}
                   disabled={loading || !country || !language}
-                  className="flex-1 flex justify-center items-center space-x-2 py-3 px-4 border border-transparent text-sm font-medium rounded-xl text-white bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl"
+                  className="flex-1 flex justify-center items-center space-x-2 py-3 px-4 border border-transparent text-sm font-medium rounded-xl text-white bg-gradient-to-r from-blue-500 to-green-600 hover:from-blue-600 hover:to-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl"
                 >
                   {loading ? (
                     <div className="flex items-center space-x-2">
@@ -331,16 +396,19 @@ const Signup: React.FC = () => {
           )}
         </div>
 
-        {/* Security Notice */}
+        {/* Enhanced Security Notice */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
           className="text-center"
         >
-          <div className="bg-gray-50 rounded-xl p-4 text-sm text-gray-600">
-            <p className="font-medium mb-1">🔒 Secure Registration</p>
-            <p>Your account will be secured with session isolation and automatic logout protection.</p>
+          <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl p-4 text-sm text-gray-600 border border-gray-200">
+            <div className="flex items-center justify-center space-x-2 mb-2">
+              <Shield className="h-4 w-4 text-blue-600" />
+              <span className="font-medium text-blue-900">Secure Registration</span>
+            </div>
+            <p>Your account will be secured with session isolation, automatic logout protection, and real-time activity monitoring.</p>
           </div>
         </motion.div>
       </motion.div>

@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { useLanguage } from '../../contexts/LanguageContext'
 import { useData } from '../../contexts/DataContext'
 import { useActivityTracking } from '../../hooks/useActivityTracking'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { 
   BookOpen, 
   ArrowLeft, 
@@ -13,8 +13,15 @@ import {
   PlayCircle,
   Brain,
   Clock,
-  Target
+  Target,
+  Trophy,
+  Star,
+  Volume2,
+  VolumeX,
+  Gamepad2,
+  Sparkles
 } from 'lucide-react'
+import Confetti from 'react-confetti'
 
 interface QuizQuestion {
   id: string
@@ -39,10 +46,44 @@ const LessonDetail: React.FC = () => {
   const [quizScore, setQuizScore] = useState(0)
   const [lessonStartTime, setLessonStartTime] = useState<number>(Date.now())
   const [quizStartTime, setQuizStartTime] = useState<number>(0)
+  const [showGame, setShowGame] = useState(false)
+  const [topicCompleted, setTopicCompleted] = useState(false)
+  const [voiceEnabled, setVoiceEnabled] = useState(false)
+  const [isReading, setIsReading] = useState(false)
 
   const lesson = data.lessons.find(l => l.id === id)
   const progress = data.userProgress.find(p => p.lesson_id === id)
   const { countryTheme } = data
+
+  // Get lesson images based on content
+  const getLessonImages = () => {
+    const baseImages = [
+      'https://images.pexels.com/photos/210182/pexels-photo-210182.jpeg?auto=compress&cs=tinysrgb&w=800',
+      'https://images.pexels.com/photos/544966/pexels-photo-544966.jpeg?auto=compress&cs=tinysrgb&w=800',
+      'https://images.pexels.com/photos/1004409/pexels-photo-1004409.jpeg?auto=compress&cs=tinysrgb&w=800'
+    ]
+    
+    // Add more specific images based on lesson content
+    if (lesson?.title.toLowerCase().includes('traffic signals')) {
+      return [
+        'https://images.pexels.com/photos/2199293/pexels-photo-2199293.jpeg?auto=compress&cs=tinysrgb&w=800',
+        'https://images.pexels.com/photos/1563356/pexels-photo-1563356.jpeg?auto=compress&cs=tinysrgb&w=800',
+        ...baseImages
+      ]
+    }
+    
+    if (lesson?.title.toLowerCase().includes('pedestrian')) {
+      return [
+        'https://images.pexels.com/photos/1004409/pexels-photo-1004409.jpeg?auto=compress&cs=tinysrgb&w=800',
+        'https://images.pexels.com/photos/2199293/pexels-photo-2199293.jpeg?auto=compress&cs=tinysrgb&w=800',
+        ...baseImages
+      ]
+    }
+    
+    return baseImages
+  }
+
+  const lessonImages = getLessonImages()
 
   useEffect(() => {
     if (!lesson) {
@@ -56,6 +97,29 @@ const LessonDetail: React.FC = () => {
       trackLessonStart(lesson.id, lesson.title)
     }
   }, [lesson, navigate, user, trackLessonStart])
+
+  // Text-to-speech functionality
+  const speakText = (text: string) => {
+    if ('speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(text)
+      utterance.lang = data.userProfile?.language === 'hi' ? 'hi-IN' : 
+                      data.userProfile?.language === 'te' ? 'te-IN' : 'en-US'
+      utterance.rate = 0.8
+      utterance.pitch = 1
+      
+      utterance.onstart = () => setIsReading(true)
+      utterance.onend = () => setIsReading(false)
+      
+      speechSynthesis.speak(utterance)
+    }
+  }
+
+  const stopSpeaking = () => {
+    if ('speechSynthesis' in window) {
+      speechSynthesis.cancel()
+      setIsReading(false)
+    }
+  }
 
   const handleStartQuiz = () => {
     setShowQuiz(true)
@@ -138,6 +202,26 @@ const LessonDetail: React.FC = () => {
     }
   }
 
+  const handleStartGame = () => {
+    setShowGame(true)
+  }
+
+  const handleGameComplete = () => {
+    setShowGame(false)
+    setTopicCompleted(true)
+  }
+
+  const handleContinueToNext = () => {
+    // Find next lesson
+    const currentIndex = data.lessons.findIndex(l => l.id === id)
+    if (currentIndex < data.lessons.length - 1) {
+      const nextLesson = data.lessons[currentIndex + 1]
+      navigate(`/lessons/${nextLesson.id}`)
+    } else {
+      navigate('/dashboard')
+    }
+  }
+
   if (!lesson) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -161,6 +245,16 @@ const LessonDetail: React.FC = () => {
         background: `linear-gradient(135deg, ${countryTheme.primaryColor}10 0%, ${countryTheme.secondaryColor}10 100%)`
       }}
     >
+      {/* Confetti for topic completion */}
+      {topicCompleted && (
+        <Confetti
+          width={window.innerWidth}
+          height={window.innerHeight}
+          recycle={false}
+          numberOfPieces={200}
+        />
+      )}
+
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <motion.div
@@ -177,20 +271,79 @@ const LessonDetail: React.FC = () => {
             <span>{t('common.back')}</span>
           </button>
           
-          <div className="flex items-center space-x-2">
-            <div 
-              className="rounded-lg p-2"
-              style={{ background: `linear-gradient(135deg, ${countryTheme.primaryColor}, ${countryTheme.secondaryColor})` }}
-            >
-              <BookOpen className="h-5 w-5 text-white" />
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <div 
+                className="rounded-lg p-2"
+                style={{ background: `linear-gradient(135deg, ${countryTheme.primaryColor}, ${countryTheme.secondaryColor})` }}
+              >
+                <BookOpen className="h-5 w-5 text-white" />
+              </div>
+              <span className="text-sm font-medium text-gray-600">
+                {t('lessons.level')} {lesson.level}
+              </span>
             </div>
-            <span className="text-sm font-medium text-gray-600">
-              {t('lessons.level')} {lesson.level}
-            </span>
+
+            {/* Voice Control */}
+            <button
+              onClick={() => {
+                if (isReading) {
+                  stopSpeaking()
+                } else {
+                  setVoiceEnabled(!voiceEnabled)
+                  if (!voiceEnabled) {
+                    speakText(lesson.title + '. ' + lesson.description)
+                  }
+                }
+              }}
+              className="flex items-center space-x-2 px-3 py-2 bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200"
+            >
+              {isReading ? (
+                <VolumeX className="h-4 w-4 text-red-500" />
+              ) : (
+                <Volume2 className="h-4 w-4 text-blue-500" />
+              )}
+              <span className="text-sm">{isReading ? 'Stop' : 'Listen'}</span>
+            </button>
           </div>
         </motion.div>
 
-        {!showQuiz ? (
+        {/* Topic Completed Screen */}
+        <AnimatePresence>
+          {topicCompleted && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+            >
+              <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 text-center">
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.2, type: "spring" }}
+                  className="text-6xl mb-4"
+                >
+                  🎉
+                </motion.div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">Topic Complete!</h2>
+                <p className="text-gray-600 mb-6">
+                  Congratulations! You've successfully completed the lesson, quiz, and interactive game for this topic.
+                </p>
+                <button
+                  onClick={handleContinueToNext}
+                  className="w-full text-white px-6 py-3 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center space-x-2"
+                  style={{ background: `linear-gradient(135deg, ${countryTheme.primaryColor}, ${countryTheme.secondaryColor})` }}
+                >
+                  <span>Continue to Next Topic</span>
+                  <ArrowRight className="h-5 w-5" />
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {!showQuiz && !showGame ? (
           <>
             {/* Lesson Content */}
             <motion.div
@@ -211,11 +364,47 @@ const LessonDetail: React.FC = () => {
 
               <p className="text-gray-600 mb-8 text-lg">{lesson.description}</p>
 
+              {/* Lesson Images */}
+              <div className="grid md:grid-cols-2 gap-6 mb-8">
+                {lessonImages.slice(0, 2).map((image, index) => (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.2 + index * 0.1 }}
+                    className="relative rounded-xl overflow-hidden shadow-lg"
+                  >
+                    <img
+                      src={image}
+                      alt={`Traffic safety illustration ${index + 1}`}
+                      className="w-full h-48 object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+                  </motion.div>
+                ))}
+              </div>
+
               <div className="prose max-w-none">
                 <div className="text-gray-800 leading-relaxed whitespace-pre-wrap">
                   {lesson.content}
                 </div>
               </div>
+
+              {/* Additional Image */}
+              {lessonImages[2] && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4 }}
+                  className="mt-8 rounded-xl overflow-hidden shadow-lg"
+                >
+                  <img
+                    src={lessonImages[2]}
+                    alt="Traffic safety concept"
+                    className="w-full h-64 object-cover"
+                  />
+                </motion.div>
+              )}
 
               {/* Lesson Stats */}
               <div className="mt-8 grid grid-cols-3 gap-6 p-6 bg-gray-50 rounded-xl">
@@ -249,40 +438,49 @@ const LessonDetail: React.FC = () => {
               </div>
             </motion.div>
 
-            {/* Quiz Section */}
+            {/* Ready to Test Prompt */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
-              className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100"
+              className="bg-gradient-to-r from-blue-50 to-green-50 rounded-2xl p-8 border border-blue-200 mb-8"
             >
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">{t('quiz.title')}</h2>
-              <p className="text-gray-600 mb-6">
-                Test your understanding of this lesson with our interactive quiz.
-              </p>
+              <div className="text-center">
+                <motion.div
+                  animate={{ scale: [1, 1.1, 1] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                  className="text-4xl mb-4"
+                >
+                  🧠
+                </motion.div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">Ready to test your knowledge?</h2>
+                <p className="text-gray-600 mb-6">
+                  Great job completing the lesson! Now let's see how well you understood the concepts with our interactive quiz.
+                </p>
 
-              {progress?.completed && (
-                <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6">
-                  <div className="flex items-center space-x-2">
-                    <CheckCircle className="h-5 w-5 text-green-600" />
-                    <span className="font-medium text-green-800">
-                      Previous Score: {progress.score}%
-                    </span>
+                {progress?.completed && (
+                  <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6">
+                    <div className="flex items-center justify-center space-x-2">
+                      <Trophy className="h-5 w-5 text-green-600" />
+                      <span className="font-medium text-green-800">
+                        Previous Score: {progress.score}%
+                      </span>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              <button
-                onClick={handleStartQuiz}
-                className="text-white px-8 py-3 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl flex items-center space-x-2 font-semibold"
-                style={{ background: `linear-gradient(135deg, ${countryTheme.primaryColor}, ${countryTheme.secondaryColor})` }}
-              >
-                <PlayCircle className="h-5 w-5" />
-                <span>{progress?.completed ? t('quiz.retake') : t('lessons.quiz')}</span>
-              </button>
+                <button
+                  onClick={handleStartQuiz}
+                  className="text-white px-8 py-3 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl flex items-center space-x-2 font-semibold mx-auto"
+                  style={{ background: `linear-gradient(135deg, ${countryTheme.primaryColor}, ${countryTheme.secondaryColor})` }}
+                >
+                  <PlayCircle className="h-5 w-5" />
+                  <span>{progress?.completed ? t('quiz.retake') : 'Start Safety Quiz'}</span>
+                </button>
+              </div>
             </motion.div>
           </>
-        ) : (
+        ) : showQuiz && !showGame ? (
           /* Quiz Interface */
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
@@ -389,23 +587,92 @@ const LessonDetail: React.FC = () => {
                   </p>
                 </div>
 
-                <div className="flex justify-center space-x-4">
-                  <button
-                    onClick={() => setShowQuiz(false)}
-                    className="px-6 py-3 text-gray-600 hover:text-gray-900 transition-colors"
+                {quizScore >= 70 ? (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl p-6 mb-6"
                   >
-                    Back to Lesson
+                    <div className="flex items-center justify-center space-x-2 mb-4">
+                      <Sparkles className="h-6 w-6 text-blue-600" />
+                      <h3 className="text-xl font-bold text-gray-900">Ready for Interactive Game?</h3>
+                    </div>
+                    <p className="text-gray-600 mb-4">
+                      Excellent work! Now let's reinforce your learning with an interactive traffic safety game.
+                    </p>
+                    <button
+                      onClick={handleStartGame}
+                      className="text-white px-6 py-3 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl flex items-center space-x-2 mx-auto"
+                      style={{ background: `linear-gradient(135deg, ${countryTheme.primaryColor}, ${countryTheme.secondaryColor})` }}
+                    >
+                      <Gamepad2 className="h-5 w-5" />
+                      <span>Start Interactive Game</span>
+                    </button>
+                  </motion.div>
+                ) : (
+                  <div className="flex justify-center space-x-4">
+                    <button
+                      onClick={() => setShowQuiz(false)}
+                      className="px-6 py-3 text-gray-600 hover:text-gray-900 transition-colors"
+                    >
+                      Review Lesson
+                    </button>
+                    <button
+                      onClick={handleRetakeQuiz}
+                      className="text-white px-8 py-3 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl"
+                      style={{ background: `linear-gradient(135deg, ${countryTheme.primaryColor}, ${countryTheme.secondaryColor})` }}
+                    >
+                      {t('quiz.retake')}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </motion.div>
+        ) : (
+          /* Interactive Game */
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3 }}
+            className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100"
+          >
+            <div className="text-center">
+              <div className="text-6xl mb-6">🎮</div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Interactive Traffic Safety Game</h2>
+              <p className="text-gray-600 mb-8">
+                Apply what you've learned in this interactive scenario-based game!
+              </p>
+              
+              {/* Simple game simulation */}
+              <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-xl p-8 mb-6">
+                <h3 className="text-lg font-semibold mb-4">Scenario: You're approaching a traffic light</h3>
+                <div className="text-4xl mb-4">🚦</div>
+                <p className="text-gray-700 mb-6">The light just turned yellow. What should you do?</p>
+                
+                <div className="space-y-3">
+                  <button
+                    onClick={() => {
+                      setTimeout(() => {
+                        alert('Correct! You should prepare to stop safely.')
+                        handleGameComplete()
+                      }, 1000)
+                    }}
+                    className="w-full p-3 bg-green-100 hover:bg-green-200 rounded-lg transition-colors"
+                  >
+                    Prepare to stop safely
                   </button>
                   <button
-                    onClick={handleRetakeQuiz}
-                    className="text-white px-8 py-3 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl"
-                    style={{ background: `linear-gradient(135deg, ${countryTheme.primaryColor}, ${countryTheme.secondaryColor})` }}
+                    onClick={() => {
+                      alert('Incorrect. Yellow means prepare to stop, not speed up.')
+                    }}
+                    className="w-full p-3 bg-red-100 hover:bg-red-200 rounded-lg transition-colors"
                   >
-                    {t('quiz.retake')}
+                    Speed up to get through
                   </button>
                 </div>
               </div>
-            )}
+            </div>
           </motion.div>
         )}
       </div>
