@@ -222,6 +222,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Clear any existing session data
       clearSessionData()
       
+      // First, check if the user exists in our database
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('username, email')
+        .eq('username', username)
+        .maybeSingle()
+
+      if (userError) {
+        logDebugInfo('Error checking user existence', userError)
+        return { 
+          data: null, 
+          error: { 
+            message: 'Error checking user account. Please try again.',
+            code: 'database_error'
+          } 
+        }
+      }
+
+      if (!userData) {
+        logDebugInfo('User not found in database', { username })
+        return { 
+          data: null, 
+          error: { 
+            message: 'User not found. Please check your username for typos or sign up first.',
+            code: 'user_not_found'
+          } 
+        }
+      }
+      
       const tempEmail = `${username}@learn2go.local`
       const tempPassword = `${username}_temp_pass_123`
       
@@ -241,8 +270,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return { 
             data: null, 
             error: { 
-              message: 'User not found. Please sign up first.',
-              code: 'user_not_found'
+              message: 'Authentication failed. The user account may not be properly set up. Please try signing up again.',
+              code: 'auth_mismatch'
             } 
           }
         }
@@ -335,11 +364,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             username: username,
             country: country,
             language: language,
-          }
+          },
+          emailRedirectTo: undefined // Disable email confirmation
         }
       })
 
-      if (data.user && !error) {
+      if (error) {
+        logDebugInfo('Sign up error', error)
+        
+        // Handle specific signup errors
+        if (error.message?.toLowerCase().includes('user already registered')) {
+          return { 
+            data: null, 
+            error: { 
+              message: 'This username is already registered. Please try signing in instead.',
+              code: 'user_exists'
+            } 
+          }
+        }
+        
+        return { 
+          data: null, 
+          error: { 
+            message: error.message || 'An error occurred during sign up. Please try again.',
+            code: error.code || 'signup_error'
+          } 
+        }
+      }
+
+      if (data.user) {
         logDebugInfo('Creating user profile in database')
         const { error: profileError } = await supabase.from('users').insert({
           username: username,
@@ -350,19 +403,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (profileError) {
           logDebugInfo('Error creating user profile', profileError)
+          // Don't fail the signup if profile creation fails, but log it
         }
-      }
-
-      if (error) {
-        logDebugInfo('Sign up error', error)
-      } else {
+        
         logDebugInfo('Sign up successful', { username })
       }
 
-      return { data, error }
+      return { data, error: null }
     } catch (error) {
       logDebugInfo('Exception during sign up', error)
-      return { data: null, error: { message: 'An unexpected error occurred during sign up.' } }
+      return { 
+        data: null, 
+        error: { 
+          message: 'An unexpected error occurred during sign up. Please try again.',
+          code: 'unexpected_error'
+        } 
+      }
     }
   }
 
