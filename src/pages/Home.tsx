@@ -23,6 +23,7 @@ import {
   Zap,
   Clock
 } from 'lucide-react'
+import DynamicTagline from '../components/DynamicTagline'
 
 const Home: React.FC = () => {
   const { user, isAuthenticated } = useAuth()
@@ -183,9 +184,23 @@ const Home: React.FC = () => {
             <p className="text-xl md:text-2xl text-gray-600 mb-8 max-w-3xl mx-auto">
               {t('home.subtitle')}
             </p>
-            <p className="text-lg text-gray-500 mb-12 max-w-2xl mx-auto">
+            <p className="text-lg text-gray-500 mb-8 max-w-2xl mx-auto">
               {t('home.description')}
             </p>
+
+            {/* Dynamic Tagline on Home Page */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.3 }}
+              className="mb-12 max-w-2xl mx-auto"
+            >
+              <DynamicTagline 
+                showRefreshButton={true}
+                autoRefresh={true}
+                size="large"
+              />
+            </motion.div>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <Link
