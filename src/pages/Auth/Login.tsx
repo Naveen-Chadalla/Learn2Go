@@ -278,7 +278,7 @@ const Login: React.FC = () => {
             <div>
               <motion.button
                 type="submit"
-                disabled={loading || (usernameStatus.checked && !usernameStatus.available && username.length >= 3)}
+                disabled={loading || (usernameStatus.checked && usernameStatus.available)}
                 whileHover={{ scale: 1.02, y: -1 }}
                 whileTap={{ scale: 0.98 }}
                 className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-2xl text-white bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-xl hover:shadow-2xl"
