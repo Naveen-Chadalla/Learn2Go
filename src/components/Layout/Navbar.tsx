@@ -70,7 +70,18 @@ const Navbar: React.FC = () => {
               whileTap={{ scale: 0.95 }}
               transition={{ type: "spring", stiffness: 400, damping: 17 }}
             >
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-glow transition-all duration-300">
+              <img 
+                src="/src/assets/ChatGPT Image Jun 21, 2025, 03_33_49 PM copy.png" 
+                alt="Learn2Go Logo" 
+                className="h-10 w-auto shadow-lg rounded-lg group-hover:shadow-glow transition-all duration-300"
+                onError={(e) => {
+                  // Fallback to gradient logo if image fails to load
+                  e.currentTarget.style.display = 'none'
+                  const fallback = e.currentTarget.nextElementSibling as HTMLElement
+                  if (fallback) fallback.classList.remove('hidden')
+                }}
+              />
+              <div className="hidden w-10 h-10 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-glow transition-all duration-300">
                 <Sparkles className="h-6 w-6 text-white" />
               </div>
               <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full animate-pulse"></div>

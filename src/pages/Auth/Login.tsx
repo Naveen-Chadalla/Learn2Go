@@ -201,8 +201,19 @@ const Login: React.FC = () => {
             transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
           >
             <div className="relative">
+              <img 
+                src="/src/assets/ChatGPT Image Jun 21, 2025, 03_33_49 PM copy.png" 
+                alt="Learn2Go Logo" 
+                className="h-16 w-auto shadow-2xl rounded-2xl"
+                onError={(e) => {
+                  // Fallback to gradient logo if image fails to load
+                  e.currentTarget.style.display = 'none'
+                  const fallback = e.currentTarget.nextElementSibling as HTMLElement
+                  if (fallback) fallback.classList.remove('hidden')
+                }}
+              />
               <motion.div
-                className="w-16 h-16 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-3xl flex items-center justify-center shadow-2xl"
+                className="hidden w-16 h-16 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-3xl flex items-center justify-center shadow-2xl"
                 whileHover={{ scale: 1.1, rotate: 5 }}
                 animate={{ 
                   boxShadow: [
