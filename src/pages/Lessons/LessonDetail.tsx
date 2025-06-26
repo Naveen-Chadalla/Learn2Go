@@ -204,7 +204,7 @@ const LessonDetail: React.FC = () => {
 
   if (!lesson) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center pt-16">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Lesson not found</h2>
           <button
@@ -220,9 +220,9 @@ const LessonDetail: React.FC = () => {
 
   return (
     <div 
-      className="min-h-screen"
+      className="min-h-screen pt-16"
       style={{
-        background: `linear-gradient(135deg, ${countryTheme.primaryColor}10 0%, ${countryTheme.secondaryColor}10 100%)`
+        background: `linear-gradient(135deg, ${countryTheme.primaryColor}08 0%, ${countryTheme.secondaryColor}08 100%)`
       }}
     >
       {/* Confetti for topic completion */}
@@ -243,26 +243,31 @@ const LessonDetail: React.FC = () => {
           transition={{ duration: 0.6 }}
           className="flex items-center justify-between mb-8"
         >
-          <button
+          <motion.button
             onClick={() => navigate('/dashboard')}
-            className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors"
+            whileHover={{ scale: 1.05, x: -2 }}
+            whileTap={{ scale: 0.95 }}
+            className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors bg-white/80 backdrop-blur-sm rounded-2xl px-4 py-2 shadow-soft"
           >
             <ArrowLeft className="h-5 w-5" />
-            <span>{t('common.back')}</span>
-          </button>
+            <span className="font-medium">{t('common.back')}</span>
+          </motion.button>
           
           <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
+            <motion.div 
+              className="flex items-center space-x-2 bg-white/80 backdrop-blur-sm rounded-2xl px-4 py-2 shadow-soft"
+              whileHover={{ scale: 1.02 }}
+            >
               <div 
-                className="rounded-lg p-2"
+                className="rounded-xl p-2 shadow-lg"
                 style={{ background: `linear-gradient(135deg, ${countryTheme.primaryColor}, ${countryTheme.secondaryColor})` }}
               >
                 <BookOpen className="h-5 w-5 text-white" />
               </div>
-              <span className="text-sm font-medium text-gray-600">
+              <span className="text-sm font-bold text-gray-600">
                 {t('lessons.level')} {lesson.level}
               </span>
-            </div>
+            </motion.div>
           </div>
         </motion.div>
 
@@ -287,9 +292,14 @@ const LessonDetail: React.FC = () => {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50"
             >
-              <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 text-center">
+              <motion.div 
+                className="bg-white rounded-3xl p-8 max-w-md w-full mx-4 text-center shadow-2xl"
+                initial={{ y: 50 }}
+                animate={{ y: 0 }}
+                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              >
                 <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
@@ -298,19 +308,21 @@ const LessonDetail: React.FC = () => {
                 >
                   🎉
                 </motion.div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">Topic Complete!</h2>
-                <p className="text-gray-600 mb-6">
+                <h2 className="text-3xl font-bold text-gray-900 mb-4">Topic Complete!</h2>
+                <p className="text-gray-600 mb-6 leading-relaxed">
                   Congratulations! You've successfully completed the lesson, quiz, and interactive game for this topic.
                 </p>
-                <button
+                <motion.button
                   onClick={handleContinueToNext}
-                  className="w-full text-white px-6 py-3 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center space-x-2"
+                  whileHover={{ scale: 1.05, y: -2 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="w-full text-white px-6 py-3 rounded-2xl transition-all duration-200 shadow-xl hover:shadow-2xl flex items-center justify-center space-x-2 font-bold"
                   style={{ background: `linear-gradient(135deg, ${countryTheme.primaryColor}, ${countryTheme.secondaryColor})` }}
                 >
                   <span>Continue to Next Topic</span>
                   <ArrowRight className="h-5 w-5" />
-                </button>
-              </div>
+                </motion.button>
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -322,22 +334,32 @@ const LessonDetail: React.FC = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
-              className="bg-white rounded-2xl shadow-lg p-8 mb-8 border border-gray-100"
+              className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-2xl p-8 mb-8 border border-gray-100"
             >
               <div className="flex items-center justify-between mb-6">
-                <h1 className="text-3xl font-bold text-gray-900">{lesson.title}</h1>
+                <h1 className="text-4xl font-bold text-gray-900">{lesson.title}</h1>
                 {progress?.completed && (
-                  <div className="flex items-center space-x-2 bg-green-50 text-green-700 px-4 py-2 rounded-xl">
+                  <motion.div 
+                    className="flex items-center space-x-2 bg-green-50 text-green-700 px-4 py-2 rounded-2xl border border-green-200"
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                  >
                     <CheckCircle className="h-5 w-5" />
-                    <span className="font-medium">{t('lessons.completed')}</span>
-                  </div>
+                    <span className="font-bold">{t('lessons.completed')}</span>
+                  </motion.div>
                 )}
               </div>
 
-              <p className="text-gray-600 mb-8 text-lg">{lesson.description}</p>
+              <p className="text-gray-600 mb-8 text-lg leading-relaxed">{lesson.description}</p>
 
               {/* Voiceover Player */}
-              <div className="mb-8">
+              <motion.div 
+                className="mb-8"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+              >
                 <VoiceoverPlayer
                   text={`${lesson.title}. ${lesson.description}. ${lesson.content}`}
                   language={data.userProfile?.language || 'en'}
@@ -345,7 +367,7 @@ const LessonDetail: React.FC = () => {
                   showControls={true}
                   naturalTone={true}
                 />
-              </div>
+              </motion.div>
 
               {/* Lesson Images */}
               <div className="grid md:grid-cols-2 gap-6 mb-8">
@@ -354,13 +376,14 @@ const LessonDetail: React.FC = () => {
                     key={index}
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.2 + index * 0.1 }}
-                    className="relative rounded-xl overflow-hidden shadow-lg"
+                    transition={{ delay: 0.4 + index * 0.1 }}
+                    whileHover={{ scale: 1.02, y: -4 }}
+                    className="relative rounded-3xl overflow-hidden shadow-xl group"
                   >
                     <img
                       src={image}
                       alt={`Traffic safety illustration ${index + 1}`}
-                      className="w-full h-48 object-cover"
+                      className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-105"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
                   </motion.div>
@@ -368,7 +391,7 @@ const LessonDetail: React.FC = () => {
               </div>
 
               <div className="prose max-w-none">
-                <div className="text-gray-800 leading-relaxed whitespace-pre-wrap">
+                <div className="text-gray-800 leading-relaxed whitespace-pre-wrap text-lg">
                   {lesson.content}
                 </div>
               </div>
@@ -378,47 +401,62 @@ const LessonDetail: React.FC = () => {
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4 }}
-                  className="mt-8 rounded-xl overflow-hidden shadow-lg"
+                  transition={{ delay: 0.6 }}
+                  whileHover={{ scale: 1.02, y: -4 }}
+                  className="mt-8 rounded-3xl overflow-hidden shadow-xl group"
                 >
                   <img
                     src={lessonImages[2]}
                     alt="Traffic safety concept"
-                    className="w-full h-64 object-cover"
+                    className="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-105"
                   />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
                 </motion.div>
               )}
 
               {/* Lesson Stats */}
-              <div className="mt-8 grid grid-cols-3 gap-6 p-6 bg-gray-50 rounded-xl">
+              <motion.div 
+                className="mt-8 grid grid-cols-3 gap-6 p-6 bg-gradient-to-r from-gray-50 to-gray-100 rounded-3xl border border-gray-200"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.7 }}
+              >
                 <div className="text-center">
-                  <div 
-                    className="rounded-full p-3 w-fit mx-auto mb-2"
+                  <motion.div 
+                    className="rounded-full p-3 w-fit mx-auto mb-2 shadow-lg"
                     style={{ background: `${countryTheme.primaryColor}20` }}
+                    whileHover={{ scale: 1.1, rotate: 360 }}
+                    transition={{ duration: 0.6 }}
                   >
                     <Clock className="h-6 w-6" style={{ color: countryTheme.primaryColor }} />
-                  </div>
-                  <div className="text-sm text-gray-600">Duration</div>
-                  <div className="font-semibold text-gray-900">15 min</div>
+                  </motion.div>
+                  <div className="text-sm text-gray-600 font-medium">Duration</div>
+                  <div className="font-bold text-gray-900">15 min</div>
                 </div>
                 <div className="text-center">
-                  <div 
-                    className="rounded-full p-3 w-fit mx-auto mb-2"
+                  <motion.div 
+                    className="rounded-full p-3 w-fit mx-auto mb-2 shadow-lg"
                     style={{ background: `${countryTheme.secondaryColor}20` }}
+                    whileHover={{ scale: 1.1, rotate: 360 }}
+                    transition={{ duration: 0.6 }}
                   >
                     <Brain className="h-6 w-6" style={{ color: countryTheme.secondaryColor }} />
-                  </div>
-                  <div className="text-sm text-gray-600">Difficulty</div>
-                  <div className="font-semibold text-gray-900">Level {lesson.level}</div>
+                  </motion.div>
+                  <div className="text-sm text-gray-600 font-medium">Difficulty</div>
+                  <div className="font-bold text-gray-900">Level {lesson.level}</div>
                 </div>
                 <div className="text-center">
-                  <div className="bg-green-100 rounded-full p-3 w-fit mx-auto mb-2">
+                  <motion.div 
+                    className="bg-green-100 rounded-full p-3 w-fit mx-auto mb-2 shadow-lg"
+                    whileHover={{ scale: 1.1, rotate: 360 }}
+                    transition={{ duration: 0.6 }}
+                  >
                     <Target className="h-6 w-6 text-green-600" />
-                  </div>
-                  <div className="text-sm text-gray-600">Questions</div>
-                  <div className="font-semibold text-gray-900">{lesson.quiz_questions.length}</div>
+                  </motion.div>
+                  <div className="text-sm text-gray-600 font-medium">Questions</div>
+                  <div className="font-bold text-gray-900">{lesson.quiz_questions.length}</div>
                 </div>
-              </div>
+              </motion.div>
             </motion.div>
 
             {/* Ready to Test Prompt */}
@@ -426,40 +464,47 @@ const LessonDetail: React.FC = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.3 }}
-              className="bg-gradient-to-r from-blue-50 to-green-50 rounded-2xl p-8 border border-blue-200 mb-8"
+              className="bg-gradient-to-r from-blue-50 to-green-50 rounded-3xl p-8 border-2 border-blue-200 mb-8 shadow-xl"
             >
               <div className="text-center">
                 <motion.div
                   animate={{ scale: [1, 1.1, 1] }}
                   transition={{ duration: 2, repeat: Infinity }}
-                  className="text-4xl mb-4"
+                  className="text-5xl mb-4"
                 >
                   🧠
                 </motion.div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">Ready to test your knowledge?</h2>
-                <p className="text-gray-600 mb-6">
+                <h2 className="text-3xl font-bold text-gray-900 mb-4">Ready to test your knowledge?</h2>
+                <p className="text-gray-600 mb-6 text-lg leading-relaxed">
                   Great job completing the lesson! Now let's see how well you understood the concepts with our interactive quiz.
                 </p>
 
                 {progress?.completed && (
-                  <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6">
+                  <motion.div 
+                    className="bg-green-50 border border-green-200 rounded-2xl p-4 mb-6"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.2 }}
+                  >
                     <div className="flex items-center justify-center space-x-2">
                       <Trophy className="h-5 w-5 text-green-600" />
-                      <span className="font-medium text-green-800">
+                      <span className="font-bold text-green-800">
                         Previous Score: {progress.score}%
                       </span>
                     </div>
-                  </div>
+                  </motion.div>
                 )}
 
-                <button
+                <motion.button
                   onClick={handleStartQuiz}
-                  className="text-white px-8 py-3 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl flex items-center space-x-2 font-semibold mx-auto"
+                  whileHover={{ scale: 1.05, y: -2 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="text-white px-8 py-3 rounded-2xl transition-all duration-200 shadow-xl hover:shadow-2xl flex items-center space-x-2 font-bold mx-auto text-lg"
                   style={{ background: `linear-gradient(135deg, ${countryTheme.primaryColor}, ${countryTheme.secondaryColor})` }}
                 >
                   <PlayCircle className="h-5 w-5" />
                   <span>{progress?.completed ? t('quiz.retake') : 'Start Safety Quiz'}</span>
-                </button>
+                </motion.button>
               </div>
             </motion.div>
           </>
@@ -469,38 +514,42 @@ const LessonDetail: React.FC = () => {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.3 }}
-            className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100"
+            className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-2xl p-8 border border-gray-100"
           >
             {!quizCompleted ? (
               <>
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold text-gray-900">
+                  <h2 className="text-3xl font-bold text-gray-900">
                     {t('quiz.question')} {currentQuestion + 1} of {lesson.quiz_questions.length}
                   </h2>
                   <div className="bg-gray-200 rounded-full h-3 w-32">
-                    <div
+                    <motion.div
                       className="h-3 rounded-full transition-all duration-300"
                       style={{ 
                         width: `${((currentQuestion + 1) / lesson.quiz_questions.length) * 100}%`,
                         background: `linear-gradient(90deg, ${countryTheme.primaryColor}, ${countryTheme.secondaryColor})`
                       }}
-                    ></div>
+                      initial={{ width: 0 }}
+                      animate={{ width: `${((currentQuestion + 1) / lesson.quiz_questions.length) * 100}%` }}
+                    />
                   </div>
                 </div>
 
                 <div className="mb-8">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-6">
+                  <h3 className="text-2xl font-bold text-gray-900 mb-6">
                     {lesson.quiz_questions[currentQuestion].question}
                   </h3>
 
                   <div className="space-y-4">
                     {lesson.quiz_questions[currentQuestion].options.map((option, index) => (
-                      <button
+                      <motion.button
                         key={index}
                         onClick={() => handleAnswerSelect(index)}
-                        className={`w-full text-left p-4 rounded-xl border-2 transition-all duration-200 ${
+                        whileHover={{ scale: 1.02, x: 4 }}
+                        whileTap={{ scale: 0.98 }}
+                        className={`w-full text-left p-4 rounded-2xl border-2 transition-all duration-200 ${
                           selectedAnswers[currentQuestion] === index
-                            ? 'text-blue-900'
+                            ? 'text-blue-900 shadow-lg'
                             : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                         }`}
                         style={{
@@ -526,46 +575,55 @@ const LessonDetail: React.FC = () => {
                           </div>
                           <span className="font-medium">{option}</span>
                         </div>
-                      </button>
+                      </motion.button>
                     ))}
                   </div>
                 </div>
 
                 <div className="flex justify-between">
-                  <button
+                  <motion.button
                     onClick={() => setShowQuiz(false)}
-                    className="px-6 py-3 text-gray-600 hover:text-gray-900 transition-colors"
+                    whileHover={{ scale: 1.05, x: -2 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="px-6 py-3 text-gray-600 hover:text-gray-900 transition-colors bg-gray-100 rounded-2xl font-medium"
                   >
                     Back to Lesson
-                  </button>
-                  <button
+                  </motion.button>
+                  <motion.button
                     onClick={handleNextQuestion}
                     disabled={selectedAnswers[currentQuestion] === undefined}
-                    className="text-white px-8 py-3 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                    whileHover={{ scale: 1.05, y: -1 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="text-white px-8 py-3 rounded-2xl transition-all duration-200 shadow-xl hover:shadow-2xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 font-bold"
                     style={{ background: `linear-gradient(135deg, ${countryTheme.primaryColor}, ${countryTheme.secondaryColor})` }}
                   >
                     <span>
                       {currentQuestion < lesson.quiz_questions.length - 1 ? t('quiz.next') : t('quiz.finish')}
                     </span>
                     <ArrowRight className="h-5 w-5" />
-                  </button>
+                  </motion.button>
                 </div>
               </>
             ) : (
               /* Quiz Results */
               <div className="text-center">
                 <div className="mb-8">
-                  <div className={`w-24 h-24 rounded-full mx-auto mb-6 flex items-center justify-center ${
-                    quizScore >= 70 ? 'bg-green-100' : 'bg-red-100'
-                  }`}>
+                  <motion.div 
+                    className={`w-24 h-24 rounded-full mx-auto mb-6 flex items-center justify-center ${
+                      quizScore >= 70 ? 'bg-green-100' : 'bg-red-100'
+                    }`}
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  >
                     <span className="text-4xl">
                       {quizScore >= 70 ? '🎉' : '😅'}
                     </span>
-                  </div>
-                  <h2 className="text-3xl font-bold text-gray-900 mb-4">
+                  </motion.div>
+                  <h2 className="text-4xl font-bold text-gray-900 mb-4">
                     {t('quiz.score')}: {quizScore}%
                   </h2>
-                  <p className={`text-lg ${quizScore >= 70 ? 'text-green-600' : 'text-red-600'}`}>
+                  <p className={`text-xl ${quizScore >= 70 ? 'text-green-600' : 'text-red-600'}`}>
                     {quizScore >= 70 ? t('quiz.passed') : t('quiz.failed')}
                   </p>
                 </div>
@@ -574,39 +632,45 @@ const LessonDetail: React.FC = () => {
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl p-6 mb-6"
+                    className="bg-gradient-to-r from-green-50 to-blue-50 rounded-2xl p-6 mb-6 border border-green-200"
                   >
                     <div className="flex items-center justify-center space-x-2 mb-4">
                       <Sparkles className="h-6 w-6 text-blue-600" />
-                      <h3 className="text-xl font-bold text-gray-900">Ready for Interactive Game?</h3>
+                      <h3 className="text-2xl font-bold text-gray-900">Ready for Interactive Game?</h3>
                     </div>
-                    <p className="text-gray-600 mb-4">
+                    <p className="text-gray-600 mb-4 text-lg">
                       Excellent work! Now let's reinforce your learning with an interactive traffic safety game.
                     </p>
-                    <button
+                    <motion.button
                       onClick={handleStartGame}
-                      className="text-white px-6 py-3 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl flex items-center space-x-2 mx-auto"
+                      whileHover={{ scale: 1.05, y: -2 }}
+                      whileTap={{ scale: 0.95 }}
+                      className="text-white px-6 py-3 rounded-2xl transition-all duration-200 shadow-xl hover:shadow-2xl flex items-center space-x-2 mx-auto font-bold"
                       style={{ background: `linear-gradient(135deg, ${countryTheme.primaryColor}, ${countryTheme.secondaryColor})` }}
                     >
                       <Gamepad2 className="h-5 w-5" />
                       <span>Start Interactive Game</span>
-                    </button>
+                    </motion.button>
                   </motion.div>
                 ) : (
                   <div className="flex justify-center space-x-4">
-                    <button
+                    <motion.button
                       onClick={() => setShowQuiz(false)}
-                      className="px-6 py-3 text-gray-600 hover:text-gray-900 transition-colors"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      className="px-6 py-3 text-gray-600 hover:text-gray-900 transition-colors bg-gray-100 rounded-2xl font-medium"
                     >
                       Review Lesson
-                    </button>
-                    <button
+                    </motion.button>
+                    <motion.button
                       onClick={handleRetakeQuiz}
-                      className="text-white px-8 py-3 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl"
+                      whileHover={{ scale: 1.05, y: -1 }}
+                      whileTap={{ scale: 0.95 }}
+                      className="text-white px-8 py-3 rounded-2xl transition-all duration-200 shadow-xl hover:shadow-2xl font-bold"
                       style={{ background: `linear-gradient(135deg, ${countryTheme.primaryColor}, ${countryTheme.secondaryColor})` }}
                     >
                       {t('quiz.retake')}
-                    </button>
+                    </motion.button>
                   </div>
                 )}
               </div>
@@ -618,7 +682,7 @@ const LessonDetail: React.FC = () => {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.3 }}
-            className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100"
+            className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-2xl p-8 border border-gray-100"
           >
             <InteractiveGame
               lessonId={lesson.id}
