@@ -205,31 +205,91 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         password: tempPassword 
       })
 
-      // Consolidated error handling
+      // Enhanced error handling with specific checks
       if (error) {
         logDebugInfo('Sign in error', error)
         
-        // Check for invalid credentials specifically
-        if (error.message.includes('Invalid login credentials') ||
-            error.message.includes('invalid_credentials') ||
-            error.code === 'invalid_credentials') {
-          return { data: null, error: { message: 'User not found. Please sign up first.' } }
+        // Check for various forms of invalid credentials
+        if (error.message?.toLowerCase().includes('invalid login credentials') ||
+            error.message?.toLowerCase().includes('invalid_credentials') ||
+            error.code === 'invalid_credentials' ||
+            error.status === 400) {
+          return { 
+            data: null, 
+            error: { 
+              message: 'User not found. Please sign up first.',
+              code: 'user_not_found'
+            } 
+          }
         }
         
-        // Return the original error with a proper message
+        // Handle other specific error cases
+        if (error.message?.toLowerCase().includes('email not confirmed')) {
+          return { 
+            data: null, 
+            error: { 
+              message: 'Please verify your email address before signing in.',
+              code: 'email_not_confirmed'
+            } 
+          }
+        }
+
+        if (error.message?.toLowerCase().includes('too many requests')) {
+          return { 
+            data: null, 
+            error: { 
+              message: 'Too many login attempts. Please try again later.',
+              code: 'rate_limit'
+            } 
+          }
+        }
+        
+        // Return the original error with a fallback message
         return { 
           data: null, 
           error: { 
-            message: error.message || 'An error occurred during sign in.' 
+            message: error.message || 'An error occurred during sign in. Please try again.',
+            code: error.code || 'unknown_error'
           } 
         }
       }
 
-      logDebugInfo('Sign in successful', { username })
-      return { data, error: null }
-    } catch (error) {
+      // Success case
+      if (data?.user) {
+        logDebugInfo('Sign in successful', { username })
+        return { data, error: null }
+      }
+
+      // Fallback case - no data and no error (shouldn't happen)
+      return { 
+        data: null, 
+        error: { 
+          message: 'Sign in failed. Please try again.',
+          code: 'unknown_error'
+        } 
+      }
+
+    } catch (error: any) {
       logDebugInfo('Exception during sign in', error)
-      return { data: null, error: { message: 'An unexpected error occurred during sign in.' } }
+      
+      // Handle network errors
+      if (error.name === 'NetworkError' || error.message?.includes('fetch')) {
+        return { 
+          data: null, 
+          error: { 
+            message: 'Network error. Please check your connection and try again.',
+            code: 'network_error'
+          } 
+        }
+      }
+      
+      return { 
+        data: null, 
+        error: { 
+          message: 'An unexpected error occurred during sign in. Please try again.',
+          code: 'unexpected_error'
+        } 
+      }
     }
   }
 
