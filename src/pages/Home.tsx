@@ -21,7 +21,10 @@ import {
   Heart,
   Target,
   Zap,
-  Clock
+  Clock,
+  Sparkles,
+  Star,
+  Play
 } from 'lucide-react'
 import DynamicTagline from '../components/DynamicTagline'
 
@@ -44,32 +47,36 @@ const Home: React.FC = () => {
       icon: <Brain className="h-8 w-8" />,
       title: t('home.features.interactive'),
       description: t('home.features.interactive.desc'),
-      color: 'from-blue-500 to-cyan-500'
+      color: 'from-blue-500 to-cyan-500',
+      bgColor: 'from-blue-50 to-cyan-50'
     },
     {
       icon: <TrendingUp className="h-8 w-8" />,
       title: t('home.features.progress'),
       description: t('home.features.progress.desc'),
-      color: 'from-green-500 to-emerald-500'
+      color: 'from-green-500 to-emerald-500',
+      bgColor: 'from-green-50 to-emerald-50'
     },
     {
       icon: <Globe className="h-8 w-8" />,
       title: t('home.features.multilingual'),
       description: t('home.features.multilingual.desc'),
-      color: 'from-purple-500 to-pink-500'
+      color: 'from-purple-500 to-pink-500',
+      bgColor: 'from-purple-50 to-pink-50'
     },
     {
       icon: <Award className="h-8 w-8" />,
       title: t('home.features.quizzes'),
       description: t('home.features.quizzes.desc'),
-      color: 'from-orange-500 to-red-500'
+      color: 'from-orange-500 to-red-500',
+      bgColor: 'from-orange-50 to-red-50'
     }
   ]
 
   const stats = [
-    { label: 'Traffic Lessons', value: '100+', icon: <BookOpen className="h-6 w-6" /> },
-    { label: 'Success Rate', value: '98%', icon: <CheckCircle className="h-6 w-6" /> },
-    { label: 'Languages', value: '12+', icon: <Globe className="h-6 w-6" /> }
+    { label: 'Traffic Lessons', value: '100+', icon: <BookOpen className="h-6 w-6" />, color: 'text-blue-600' },
+    { label: 'Success Rate', value: '98%', icon: <CheckCircle className="h-6 w-6" />, color: 'text-green-600' },
+    { label: 'Languages', value: '12+', icon: <Globe className="h-6 w-6" />, color: 'text-purple-600' }
   ]
 
   const projectImportance = {
@@ -146,10 +153,35 @@ const Home: React.FC = () => {
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 pt-16">
       {/* Hero Section */}
       <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 to-green-600/10"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/5 to-green-600/5"></div>
+        
+        {/* Animated Background Elements */}
+        <div className="absolute inset-0 overflow-hidden">
+          {[...Array(6)].map((_, i) => (
+            <motion.div
+              key={i}
+              className="absolute w-4 h-4 bg-blue-300/20 rounded-full"
+              animate={{
+                x: [0, 100, 0],
+                y: [0, -100, 0],
+                scale: [1, 1.5, 1],
+              }}
+              transition={{
+                duration: 8 + i * 2,
+                repeat: Infinity,
+                delay: i * 1.5,
+              }}
+              style={{
+                left: `${10 + i * 15}%`,
+                top: `${20 + i * 10}%`,
+              }}
+            />
+          ))}
+        </div>
+
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 relative">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -157,42 +189,70 @@ const Home: React.FC = () => {
             transition={{ duration: 0.8 }}
             className="text-center"
           >
-            <div className="flex justify-center mb-8">
+            <motion.div 
+              className="flex justify-center mb-8"
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+            >
               <div className="relative">
-                <img 
-                  src="/src/assets/ChatGPT Image Jun 21, 2025, 03_33_49 PM copy.png" 
-                  alt="Learn2Go Logo" 
-                  className="h-24 w-auto"
-                  onError={(e) => {
-                    // Fallback to gradient logo if image fails to load
-                    e.currentTarget.style.display = 'none'
-                    e.currentTarget.nextElementSibling?.classList.remove('hidden')
+                <motion.div
+                  className="w-24 h-24 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-3xl flex items-center justify-center shadow-2xl"
+                  whileHover={{ scale: 1.1, rotate: 5 }}
+                  animate={{ 
+                    boxShadow: [
+                      "0 20px 40px rgba(59, 130, 246, 0.3)",
+                      "0 20px 40px rgba(139, 92, 246, 0.3)",
+                      "0 20px 40px rgba(236, 72, 153, 0.3)",
+                      "0 20px 40px rgba(59, 130, 246, 0.3)"
+                    ]
                   }}
+                  transition={{ duration: 3, repeat: Infinity }}
+                >
+                  <Sparkles className="h-12 w-12 text-white" />
+                </motion.div>
+                <motion.div
+                  className="absolute -top-2 -right-2 w-6 h-6 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full"
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ duration: 2, repeat: Infinity }}
                 />
-                <div className="hidden bg-gradient-to-r from-blue-500 to-green-600 p-6 rounded-3xl">
-                  <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center">
-                    <div className="w-6 h-6 bg-gradient-to-b from-red-500 via-yellow-500 to-green-500 rounded-full"></div>
-                  </div>
-                </div>
               </div>
-            </div>
-            <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
-              <span className="bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">
+            </motion.div>
+            
+            <motion.h1 
+              className="text-5xl md:text-7xl font-bold text-gray-900 mb-6"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-green-600 bg-clip-text text-transparent">
                 {t('home.title')}
               </span>
-            </h1>
-            <p className="text-xl md:text-2xl text-gray-600 mb-8 max-w-3xl mx-auto">
+            </motion.h1>
+            
+            <motion.p 
+              className="text-2xl md:text-3xl text-gray-600 mb-6 font-semibold"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+            >
               {t('home.subtitle')}
-            </p>
-            <p className="text-lg text-gray-500 mb-8 max-w-2xl mx-auto">
+            </motion.p>
+            
+            <motion.p 
+              className="text-lg text-gray-500 mb-8 max-w-2xl mx-auto leading-relaxed"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+            >
               {t('home.description')}
-            </p>
+            </motion.p>
 
             {/* Dynamic Tagline on Home Page */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.3 }}
+              transition={{ duration: 0.8, delay: 0.6 }}
               className="mb-12 max-w-2xl mx-auto"
             >
               <DynamicTagline 
@@ -202,47 +262,72 @@ const Home: React.FC = () => {
               />
             </motion.div>
             
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Link
-                to="/signup"
-                className="bg-gradient-to-r from-blue-500 to-green-600 text-white px-8 py-4 rounded-2xl font-semibold hover:from-blue-600 hover:to-green-700 transition-all duration-200 shadow-lg hover:shadow-xl flex items-center space-x-2"
+            <motion.div 
+              className="flex flex-col sm:flex-row gap-6 justify-center items-center"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.7 }}
+            >
+              <motion.div
+                whileHover={{ scale: 1.05, y: -2 }}
+                whileTap={{ scale: 0.95 }}
               >
-                <span>{t('home.getStarted')}</span>
-                <ArrowRight className="h-5 w-5" />
-              </Link>
-              <button 
+                <Link
+                  to="/signup"
+                  className="bg-gradient-to-r from-blue-500 to-green-600 text-white px-8 py-4 rounded-3xl font-bold hover:from-blue-600 hover:to-green-700 transition-all duration-300 shadow-xl hover:shadow-2xl flex items-center space-x-3 text-lg"
+                >
+                  <Play className="h-6 w-6" />
+                  <span>{t('home.getStarted')}</span>
+                  <ArrowRight className="h-6 w-6" />
+                </Link>
+              </motion.div>
+              
+              <motion.button 
                 onClick={() => setShowLearnMore(true)}
-                className="border-2 border-gray-300 text-gray-700 px-8 py-4 rounded-2xl font-semibold hover:border-gray-400 hover:bg-gray-50 transition-all duration-200"
+                whileHover={{ scale: 1.05, y: -2 }}
+                whileTap={{ scale: 0.95 }}
+                className="border-2 border-gray-300 text-gray-700 px-8 py-4 rounded-3xl font-bold hover:border-gray-400 hover:bg-gray-50 transition-all duration-300 shadow-lg hover:shadow-xl"
               >
                 {t('home.learnMore')}
-              </button>
-            </div>
+              </motion.button>
+            </motion.div>
           </motion.div>
 
           {/* Stats */}
           <motion.div
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
+            transition={{ duration: 0.8, delay: 0.8 }}
             className="mt-20 grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto"
           >
             {stats.map((stat, index) => (
-              <div key={index} className="text-center">
-                <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-shadow">
-                  <div className="bg-gradient-to-r from-blue-500 to-green-600 rounded-xl p-3 w-fit mx-auto mb-4">
+              <motion.div 
+                key={index} 
+                className="text-center"
+                whileHover={{ scale: 1.05, y: -5 }}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.9 + index * 0.1 }}
+              >
+                <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-8 shadow-xl hover:shadow-2xl transition-all duration-300 border border-gray-100">
+                  <motion.div 
+                    className={`bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl p-4 w-fit mx-auto mb-6 shadow-lg`}
+                    whileHover={{ rotate: 360 }}
+                    transition={{ duration: 0.6 }}
+                  >
                     <div className="text-white">{stat.icon}</div>
-                  </div>
-                  <div className="text-2xl font-bold text-gray-900 mb-2">{stat.value}</div>
-                  <div className="text-sm text-gray-600">{stat.label}</div>
+                  </motion.div>
+                  <div className="text-4xl font-bold text-gray-900 mb-3">{stat.value}</div>
+                  <div className="text-sm text-gray-600 font-medium">{stat.label}</div>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </motion.div>
         </div>
       </section>
 
       {/* Features Section */}
-      <section className="py-20 bg-white">
+      <section className="py-20 bg-white/50 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -251,10 +336,10 @@ const Home: React.FC = () => {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
               {t('home.features.title')}
             </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
               Discover the features that make Learn2Go the perfect platform for traffic safety education.
             </p>
           </motion.div>
@@ -267,12 +352,17 @@ const Home: React.FC = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
                 viewport={{ once: true }}
-                className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-gray-200"
+                whileHover={{ scale: 1.05, y: -5 }}
+                className={`bg-gradient-to-br ${feature.bgColor} rounded-3xl p-8 shadow-xl hover:shadow-2xl transition-all duration-300 border border-gray-100 group`}
               >
-                <div className={`bg-gradient-to-r ${feature.color} rounded-xl p-4 w-fit mb-6`}>
+                <motion.div 
+                  className={`bg-gradient-to-r ${feature.color} rounded-2xl p-4 w-fit mb-6 shadow-lg group-hover:shadow-xl`}
+                  whileHover={{ rotate: 360 }}
+                  transition={{ duration: 0.6 }}
+                >
                   <div className="text-white">{feature.icon}</div>
-                </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-4">{feature.title}</h3>
+                </motion.div>
+                <h3 className="text-xl font-bold text-gray-900 mb-4">{feature.title}</h3>
                 <p className="text-gray-600 leading-relaxed">{feature.description}</p>
               </motion.div>
             ))}
@@ -290,15 +380,15 @@ const Home: React.FC = () => {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
               Global Language Support
             </h2>
-            <p className="text-lg text-gray-600 max-w-3xl mx-auto mb-8">
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8 leading-relaxed">
               Learn traffic safety in your native language. We support <span className="font-bold text-blue-600">{supportedLanguages.length}+ languages</span> across multiple countries and regions.
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-6">
             {supportedLanguages.map((lang, index) => (
               <motion.div
                 key={index}
@@ -306,10 +396,17 @@ const Home: React.FC = () => {
                 whileInView={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.3, delay: index * 0.05 }}
                 viewport={{ once: true }}
-                className="bg-white rounded-xl p-4 shadow-md hover:shadow-lg transition-all duration-200 text-center"
+                whileHover={{ scale: 1.1, y: -5 }}
+                className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 text-center border border-gray-200"
               >
-                <div className="text-2xl mb-2">{lang.flag}</div>
-                <div className="text-sm font-medium text-gray-900">{lang.name}</div>
+                <motion.div 
+                  className="text-3xl mb-3"
+                  animate={{ rotate: [0, 10, -10, 0] }}
+                  transition={{ duration: 2, repeat: Infinity, delay: index * 0.2 }}
+                >
+                  {lang.flag}
+                </motion.div>
+                <div className="text-sm font-bold text-gray-900">{lang.name}</div>
               </motion.div>
             ))}
           </div>
@@ -321,10 +418,15 @@ const Home: React.FC = () => {
             viewport={{ once: true }}
             className="text-center mt-12"
           >
-            <div className="bg-blue-50 rounded-2xl p-8 border border-blue-200">
-              <Globe className="h-12 w-12 text-blue-600 mx-auto mb-4" />
-              <h3 className="text-xl font-bold text-blue-900 mb-2">Localized Content</h3>
-              <p className="text-blue-800">
+            <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-3xl p-8 border-2 border-blue-200 shadow-xl">
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+              >
+                <Globe className="h-16 w-16 text-blue-600 mx-auto mb-6" />
+              </motion.div>
+              <h3 className="text-2xl font-bold text-blue-900 mb-4">Localized Content</h3>
+              <p className="text-blue-800 text-lg leading-relaxed">
                 Each language includes country-specific traffic rules, road signs, and cultural context to ensure relevant and effective learning.
               </p>
             </div>
@@ -333,7 +435,7 @@ const Home: React.FC = () => {
       </section>
 
       {/* Safety Focus Section */}
-      <section className="py-20 bg-white">
+      <section className="py-20 bg-white/80 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -342,10 +444,10 @@ const Home: React.FC = () => {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
               Making Roads Safer Through Education
             </h2>
-            <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
               Our AI-powered platform focuses on critical traffic safety topics to reduce accidents and save lives.
             </p>
           </motion.div>
@@ -356,13 +458,18 @@ const Home: React.FC = () => {
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6 }}
               viewport={{ once: true }}
-              className="bg-white rounded-2xl p-8 shadow-lg"
+              whileHover={{ scale: 1.05, y: -5 }}
+              className="bg-gradient-to-br from-red-50 to-pink-50 rounded-3xl p-8 shadow-xl hover:shadow-2xl transition-all duration-300 border border-red-100"
             >
-              <div className="bg-gradient-to-r from-red-500 to-pink-500 rounded-xl p-4 w-fit mb-6">
+              <motion.div 
+                className="bg-gradient-to-r from-red-500 to-pink-500 rounded-2xl p-4 w-fit mb-6 shadow-lg"
+                whileHover={{ rotate: 360 }}
+                transition={{ duration: 0.6 }}
+              >
                 <Car className="h-8 w-8 text-white" />
-              </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">Vehicle Safety</h3>
-              <p className="text-gray-600">
+              </motion.div>
+              <h3 className="text-xl font-bold text-gray-900 mb-4">Vehicle Safety</h3>
+              <p className="text-gray-600 leading-relaxed">
                 Learn about vehicle maintenance, safety checks, and proper driving techniques for different road conditions.
               </p>
             </motion.div>
@@ -372,13 +479,18 @@ const Home: React.FC = () => {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
               viewport={{ once: true }}
-              className="bg-white rounded-2xl p-8 shadow-lg"
+              whileHover={{ scale: 1.05, y: -5 }}
+              className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-3xl p-8 shadow-xl hover:shadow-2xl transition-all duration-300 border border-yellow-100"
             >
-              <div className="bg-gradient-to-r from-yellow-500 to-orange-500 rounded-xl p-4 w-fit mb-6">
+              <motion.div 
+                className="bg-gradient-to-r from-yellow-500 to-orange-500 rounded-2xl p-4 w-fit mb-6 shadow-lg"
+                whileHover={{ rotate: 360 }}
+                transition={{ duration: 0.6 }}
+              >
                 <AlertTriangle className="h-8 w-8 text-white" />
-              </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">Traffic Rules</h3>
-              <p className="text-gray-600">
+              </motion.div>
+              <h3 className="text-xl font-bold text-gray-900 mb-4">Traffic Rules</h3>
+              <p className="text-gray-600 leading-relaxed">
                 Master traffic signals, road signs, right-of-way rules, and traffic regulations to become a responsible driver.
               </p>
             </motion.div>
@@ -388,13 +500,18 @@ const Home: React.FC = () => {
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
               viewport={{ once: true }}
-              className="bg-white rounded-2xl p-8 shadow-lg"
+              whileHover={{ scale: 1.05, y: -5 }}
+              className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-3xl p-8 shadow-xl hover:shadow-2xl transition-all duration-300 border border-blue-100"
             >
-              <div className="bg-gradient-to-r from-blue-500 to-cyan-500 rounded-xl p-4 w-fit mb-6">
+              <motion.div 
+                className="bg-gradient-to-r from-blue-500 to-cyan-500 rounded-2xl p-4 w-fit mb-6 shadow-lg"
+                whileHover={{ rotate: 360 }}
+                transition={{ duration: 0.6 }}
+              >
                 <Eye className="h-8 w-8 text-white" />
-              </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">Hazard Awareness</h3>
-              <p className="text-gray-600">
+              </motion.div>
+              <h3 className="text-xl font-bold text-gray-900 mb-4">Hazard Awareness</h3>
+              <p className="text-gray-600 leading-relaxed">
                 Develop skills to identify and respond to potential hazards, emergency situations, and adverse weather conditions.
               </p>
             </motion.div>
@@ -403,27 +520,41 @@ const Home: React.FC = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 bg-gradient-to-r from-blue-600 to-green-600">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <section className="py-20 bg-gradient-to-r from-blue-600 via-purple-600 to-green-600 relative overflow-hidden">
+        <div className="absolute inset-0 bg-black/10"></div>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
+            <motion.div
+              animate={{ scale: [1, 1.1, 1] }}
+              transition={{ duration: 2, repeat: Infinity }}
+              className="text-6xl mb-6"
+            >
+              🚗
+            </motion.div>
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
               Ready to Become a Safer Driver?
             </h2>
-            <p className="text-xl text-blue-100 mb-8">
+            <p className="text-xl text-blue-100 mb-8 leading-relaxed">
               Join thousands of learners who are making our roads safer through proper traffic education.
             </p>
-            <Link
-              to="/signup"
-              className="bg-white text-blue-600 px-8 py-4 rounded-2xl font-semibold hover:bg-gray-100 transition-all duration-200 shadow-lg hover:shadow-xl inline-flex items-center space-x-2"
+            <motion.div
+              whileHover={{ scale: 1.05, y: -2 }}
+              whileTap={{ scale: 0.95 }}
             >
-              <span>Start Your Safety Journey</span>
-              <ArrowRight className="h-5 w-5" />
-            </Link>
+              <Link
+                to="/signup"
+                className="bg-white text-blue-600 px-8 py-4 rounded-3xl font-bold hover:bg-gray-100 transition-all duration-300 shadow-2xl hover:shadow-3xl inline-flex items-center space-x-3 text-lg"
+              >
+                <Star className="h-6 w-6" />
+                <span>Start Your Safety Journey</span>
+                <ArrowRight className="h-6 w-6" />
+              </Link>
+            </motion.div>
           </motion.div>
         </div>
       </section>
@@ -435,25 +566,27 @@ const Home: React.FC = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
             onClick={() => setShowLearnMore(false)}
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+              className="bg-white rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="p-8">
                 <div className="flex items-center justify-between mb-8">
                   <h2 className="text-3xl font-bold text-gray-900">Why Learn2Go Matters</h2>
-                  <button
+                  <motion.button
                     onClick={() => setShowLearnMore(false)}
-                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                    whileHover={{ scale: 1.1, rotate: 90 }}
+                    whileTap={{ scale: 0.9 }}
+                    className="p-2 hover:bg-gray-100 rounded-2xl transition-colors"
                   >
                     <X className="h-6 w-6 text-gray-500" />
-                  </button>
+                  </motion.button>
                 </div>
 
                 <div className="space-y-12">
@@ -465,13 +598,17 @@ const Home: React.FC = () => {
                     </h3>
                     <div className="grid md:grid-cols-3 gap-6">
                       {projectImportance.why.map((item, index) => (
-                        <div key={index} className="bg-gray-50 rounded-xl p-6">
+                        <motion.div 
+                          key={index} 
+                          className="bg-gray-50 rounded-2xl p-6"
+                          whileHover={{ scale: 1.02, y: -2 }}
+                        >
                           <div className="flex items-center mb-3">
                             {item.icon}
-                            <h4 className="font-semibold text-gray-900 ml-2">{item.title}</h4>
+                            <h4 className="font-bold text-gray-900 ml-2">{item.title}</h4>
                           </div>
-                          <p className="text-gray-600 text-sm">{item.description}</p>
-                        </div>
+                          <p className="text-gray-600 text-sm leading-relaxed">{item.description}</p>
+                        </motion.div>
                       ))}
                     </div>
                   </div>
@@ -484,13 +621,17 @@ const Home: React.FC = () => {
                     </h3>
                     <div className="grid md:grid-cols-3 gap-6">
                       {projectImportance.how.map((item, index) => (
-                        <div key={index} className="bg-blue-50 rounded-xl p-6">
+                        <motion.div 
+                          key={index} 
+                          className="bg-blue-50 rounded-2xl p-6"
+                          whileHover={{ scale: 1.02, y: -2 }}
+                        >
                           <div className="flex items-center mb-3">
                             {item.icon}
-                            <h4 className="font-semibold text-gray-900 ml-2">{item.title}</h4>
+                            <h4 className="font-bold text-gray-900 ml-2">{item.title}</h4>
                           </div>
-                          <p className="text-gray-600 text-sm">{item.description}</p>
-                        </div>
+                          <p className="text-gray-600 text-sm leading-relaxed">{item.description}</p>
+                        </motion.div>
                       ))}
                     </div>
                   </div>
@@ -503,37 +644,41 @@ const Home: React.FC = () => {
                     </h3>
                     <div className="grid md:grid-cols-3 gap-6">
                       {projectImportance.impact.map((item, index) => (
-                        <div key={index} className="bg-green-50 rounded-xl p-6">
+                        <motion.div 
+                          key={index} 
+                          className="bg-green-50 rounded-2xl p-6"
+                          whileHover={{ scale: 1.02, y: -2 }}
+                        >
                           <div className="flex items-center mb-3">
                             {item.icon}
-                            <h4 className="font-semibold text-gray-900 ml-2">{item.title}</h4>
+                            <h4 className="font-bold text-gray-900 ml-2">{item.title}</h4>
                           </div>
-                          <p className="text-gray-600 text-sm">{item.description}</p>
-                        </div>
+                          <p className="text-gray-600 text-sm leading-relaxed">{item.description}</p>
+                        </motion.div>
                       ))}
                     </div>
                   </div>
 
                   {/* Statistics */}
-                  <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-2xl p-8">
+                  <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-3xl p-8 border border-blue-200">
                     <h3 className="text-2xl font-bold text-gray-900 mb-6 text-center">
                       By the Numbers
                     </h3>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
                       <div>
-                        <div className="text-3xl font-bold text-red-600 mb-2">1.35M</div>
+                        <div className="text-4xl font-bold text-red-600 mb-2">1.35M</div>
                         <div className="text-sm text-gray-600">Annual road deaths globally</div>
                       </div>
                       <div>
-                        <div className="text-3xl font-bold text-orange-600 mb-2">50M</div>
+                        <div className="text-4xl font-bold text-orange-600 mb-2">50M</div>
                         <div className="text-sm text-gray-600">People injured annually</div>
                       </div>
                       <div>
-                        <div className="text-3xl font-bold text-green-600 mb-2">40%</div>
+                        <div className="text-4xl font-bold text-green-600 mb-2">40%</div>
                         <div className="text-sm text-gray-600">Accident reduction with proper education</div>
                       </div>
                       <div>
-                        <div className="text-3xl font-bold text-blue-600 mb-2">16+</div>
+                        <div className="text-4xl font-bold text-blue-600 mb-2">16+</div>
                         <div className="text-sm text-gray-600">Languages supported</div>
                       </div>
                     </div>
@@ -541,14 +686,19 @@ const Home: React.FC = () => {
                 </div>
 
                 <div className="mt-8 text-center">
-                  <Link
-                    to="/signup"
-                    onClick={() => setShowLearnMore(false)}
-                    className="bg-gradient-to-r from-blue-500 to-green-600 text-white px-8 py-3 rounded-xl font-semibold hover:from-blue-600 hover:to-green-700 transition-all duration-200 shadow-lg hover:shadow-xl inline-flex items-center space-x-2"
+                  <motion.div
+                    whileHover={{ scale: 1.05, y: -2 }}
+                    whileTap={{ scale: 0.95 }}
                   >
-                    <span>Join the Movement</span>
-                    <ArrowRight className="h-5 w-5" />
-                  </Link>
+                    <Link
+                      to="/signup"
+                      onClick={() => setShowLearnMore(false)}
+                      className="bg-gradient-to-r from-blue-500 to-green-600 text-white px-8 py-3 rounded-2xl font-bold hover:from-blue-600 hover:to-green-700 transition-all duration-300 shadow-xl hover:shadow-2xl inline-flex items-center space-x-2"
+                    >
+                      <span>Join the Movement</span>
+                      <ArrowRight className="h-5 w-5" />
+                    </Link>
+                  </motion.div>
                 </div>
               </div>
             </motion.div>

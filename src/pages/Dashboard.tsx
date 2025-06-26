@@ -18,7 +18,10 @@ import {
   MapPin,
   Trophy,
   RefreshCw,
-  Sparkles
+  Sparkles,
+  Users,
+  Calendar,
+  Flame
 } from 'lucide-react'
 import { getCountryByCode, getLanguageByCode } from '../types/countries'
 import DynamicTagline from '../components/DynamicTagline'
@@ -52,28 +55,32 @@ const Dashboard: React.FC = () => {
       value: userProfile?.current_level || 1,
       icon: <Target className="h-6 w-6" />,
       color: 'from-blue-500 to-cyan-500',
-      bgColor: 'bg-blue-50'
+      bgColor: 'bg-gradient-to-br from-blue-50 to-cyan-50',
+      iconBg: 'bg-gradient-to-br from-blue-500 to-cyan-500'
     },
     {
       title: t('dashboard.completedLessons'),
       value: analytics.totalQuizzes,
       icon: <CheckCircle className="h-6 w-6" />,
       color: 'from-green-500 to-emerald-500',
-      bgColor: 'bg-green-50'
+      bgColor: 'bg-gradient-to-br from-green-50 to-emerald-50',
+      iconBg: 'bg-gradient-to-br from-green-500 to-emerald-500'
     },
     {
       title: t('dashboard.badges'),
       value: badges.filter(b => b.earned).length,
       icon: <Award className="h-6 w-6" />,
       color: 'from-yellow-500 to-orange-500',
-      bgColor: 'bg-yellow-50'
+      bgColor: 'bg-gradient-to-br from-yellow-50 to-orange-50',
+      iconBg: 'bg-gradient-to-br from-yellow-500 to-orange-500'
     },
     {
       title: 'Average Score',
       value: `${analytics.averageScore}%`,
       icon: <Zap className="h-6 w-6" />,
       color: 'from-purple-500 to-pink-500',
-      bgColor: 'bg-purple-50'
+      bgColor: 'bg-gradient-to-br from-purple-50 to-pink-50',
+      iconBg: 'bg-gradient-to-br from-purple-500 to-pink-500'
     }
   ]
 
@@ -82,9 +89,9 @@ const Dashboard: React.FC = () => {
 
   return (
     <div 
-      className="min-h-screen"
+      className="min-h-screen pt-16"
       style={{
-        background: `linear-gradient(135deg, ${countryTheme.primaryColor}10 0%, ${countryTheme.secondaryColor}10 100%)`
+        background: `linear-gradient(135deg, ${countryTheme.primaryColor}08 0%, ${countryTheme.secondaryColor}08 50%, transparent 100%)`
       }}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -97,31 +104,49 @@ const Dashboard: React.FC = () => {
         >
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                {t('dashboard.welcome')}, {user?.user_metadata?.username}! 👋
-              </h1>
+              <motion.h1 
+                className="text-4xl font-bold text-gray-900 mb-2"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.2 }}
+              >
+                {t('dashboard.welcome')}, {user?.user_metadata?.username}! 
+                <motion.span
+                  animate={{ rotate: [0, 14, -8, 14, -4, 10, 0] }}
+                  transition={{ duration: 2.5, repeat: Infinity, repeatDelay: 3 }}
+                  className="inline-block ml-2"
+                >
+                  👋
+                </motion.span>
+              </motion.h1>
               <div className="flex items-center space-x-4 text-gray-600">
-                <p>Keep up the great work on your safety learning journey</p>
-                <div className="flex items-center space-x-2 bg-white rounded-lg px-3 py-1 shadow-sm">
+                <p className="text-lg">Keep up the great work on your safety learning journey</p>
+                <motion.div 
+                  className="flex items-center space-x-2 bg-white/80 backdrop-blur-sm rounded-2xl px-4 py-2 shadow-soft border border-gray-200/50"
+                  whileHover={{ scale: 1.02, y: -2 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                >
                   <MapPin className="h-4 w-4" style={{ color: countryTheme.primaryColor }} />
-                  <span className="text-sm font-medium">
+                  <span className="text-sm font-semibold">
                     {countryData?.flag} {countryData?.name}
                   </span>
                   <Globe className="h-4 w-4" style={{ color: countryTheme.secondaryColor }} />
-                  <span className="text-sm font-medium">
+                  <span className="text-sm font-semibold">
                     {languageData?.nativeName}
                   </span>
-                </div>
+                </motion.div>
               </div>
             </div>
-            <button
+            <motion.button
               onClick={handleRefresh}
               disabled={refreshing || loading}
-              className="flex items-center space-x-2 px-4 py-2 bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50"
+              whileHover={{ scale: 1.05, rotate: 180 }}
+              whileTap={{ scale: 0.95 }}
+              className="flex items-center space-x-2 px-6 py-3 bg-white/80 backdrop-blur-sm rounded-2xl shadow-soft hover:shadow-medium transition-all duration-300 disabled:opacity-50 border border-gray-200/50"
             >
-              <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-              <span className="text-sm font-medium">Refresh</span>
-            </button>
+              <RefreshCw className={`h-5 w-5 ${refreshing ? 'animate-spin' : ''}`} />
+              <span className="font-medium">Refresh</span>
+            </motion.button>
           </div>
         </motion.div>
 
@@ -144,27 +169,38 @@ const Dashboard: React.FC = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="rounded-2xl p-4 mb-8 border-2"
+          className="rounded-3xl p-6 mb-8 border-2 shadow-soft backdrop-blur-sm"
           style={{
             background: `linear-gradient(135deg, ${countryTheme.primaryColor}15, ${countryTheme.secondaryColor}15)`,
             borderColor: `${countryTheme.primaryColor}30`
           }}
         >
-          <div className="flex items-center space-x-2 mb-2">
-            <Sparkles className="h-5 w-5" style={{ color: countryTheme.primaryColor }} />
-            <span className="font-medium" style={{ color: countryTheme.primaryColor }}>
+          <div className="flex items-center space-x-3 mb-3">
+            <motion.div
+              animate={{ rotate: [0, 10, -10, 0] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            >
+              <Sparkles className="h-6 w-6" style={{ color: countryTheme.primaryColor }} />
+            </motion.div>
+            <span className="font-bold text-lg" style={{ color: countryTheme.primaryColor }}>
               Personalized for {countryData?.name}
             </span>
           </div>
-          <p className="text-gray-700">
+          <p className="text-gray-700 leading-relaxed">
             Content is customized for {countryData?.name}'s traffic rules and displayed in {languageData?.nativeName}.
             {lessons.length === 0 && (
-              <span className="text-orange-600 font-medium"> Localized content is being prepared for your region.</span>
+              <span className="text-orange-600 font-semibold"> Localized content is being prepared for your region.</span>
             )}
           </p>
-          <div className="flex items-center space-x-4 mt-2 text-sm text-gray-600">
-            <span>🚦 Traffic Rules: {countryTheme.trafficRules.length} specific rules</span>
-            <span>🛣️ Road Signs: {countryTheme.roadSigns.join(' ')}</span>
+          <div className="flex items-center space-x-6 mt-4 text-sm text-gray-600">
+            <span className="flex items-center space-x-1">
+              <span>🚦</span>
+              <span>Traffic Rules: {countryTheme.trafficRules.length} specific rules</span>
+            </span>
+            <span className="flex items-center space-x-1">
+              <span>🛣️</span>
+              <span>Road Signs: {countryTheme.roadSigns.join(' ')}</span>
+            </span>
           </div>
         </motion.div>
 
@@ -176,18 +212,33 @@ const Dashboard: React.FC = () => {
           className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
         >
           {stats.map((stat, index) => (
-            <div key={index} className={`${stat.bgColor} rounded-2xl p-6 border border-gray-100 shadow-lg hover:shadow-xl transition-all duration-300`}>
+            <motion.div 
+              key={index} 
+              className={`${stat.bgColor} rounded-3xl p-6 border border-gray-100/50 shadow-soft hover:shadow-medium transition-all duration-300 backdrop-blur-sm`}
+              whileHover={{ scale: 1.02, y: -4 }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 * index }}
+            >
               <div className="flex items-center justify-between mb-4">
-                <div 
-                  className="rounded-xl p-3"
-                  style={{ background: `linear-gradient(135deg, ${countryTheme.primaryColor}, ${countryTheme.secondaryColor})` }}
+                <motion.div 
+                  className={`${stat.iconBg} rounded-2xl p-3 shadow-lg`}
+                  whileHover={{ rotate: 360 }}
+                  transition={{ duration: 0.6 }}
                 >
                   <div className="text-white">{stat.icon}</div>
-                </div>
+                </motion.div>
+                <motion.div
+                  animate={{ scale: [1, 1.1, 1] }}
+                  transition={{ duration: 2, repeat: Infinity, delay: index * 0.5 }}
+                  className="text-2xl"
+                >
+                  ✨
+                </motion.div>
               </div>
-              <div className="text-2xl font-bold text-gray-900 mb-1">{stat.value}</div>
-              <div className="text-sm text-gray-600">{stat.title}</div>
-            </div>
+              <div className="text-3xl font-bold text-gray-900 mb-1">{stat.value}</div>
+              <div className="text-sm text-gray-600 font-medium">{stat.title}</div>
+            </motion.div>
           ))}
         </motion.div>
 
@@ -196,58 +247,73 @@ const Dashboard: React.FC = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.4 }}
-          className="bg-white rounded-2xl shadow-lg p-8 mb-8 border border-gray-100"
+          className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-large p-8 mb-8 border border-gray-100/50"
         >
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">{t('dashboard.progress')}</h2>
+            <h2 className="text-3xl font-bold text-gray-900">{t('dashboard.progress')}</h2>
             <div className="flex items-center space-x-2 text-sm text-gray-600">
-              <TrendingUp className="h-4 w-4" />
-              <span>{userProfile?.progress || 0}% Complete</span>
+              <TrendingUp className="h-5 w-5 text-green-500" />
+              <span className="font-semibold">{userProfile?.progress || 0}% Complete</span>
             </div>
           </div>
           
-          <div className="mb-6">
-            <div className="flex justify-between text-sm text-gray-600 mb-2">
-              <span>Overall Progress</span>
-              <span>{userProfile?.progress || 0}%</span>
+          <div className="mb-8">
+            <div className="flex justify-between text-sm text-gray-600 mb-3">
+              <span className="font-medium">Overall Progress</span>
+              <span className="font-bold">{userProfile?.progress || 0}%</span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-3">
-              <div 
-                className="h-3 rounded-full transition-all duration-1000"
+            <div className="w-full bg-gray-200 rounded-full h-4 shadow-inner">
+              <motion.div 
+                className="h-4 rounded-full shadow-lg"
                 style={{ 
-                  width: `${userProfile?.progress || 0}%`,
                   background: `linear-gradient(90deg, ${countryTheme.primaryColor}, ${countryTheme.secondaryColor})`
                 }}
-              ></div>
+                initial={{ width: 0 }}
+                animate={{ width: `${userProfile?.progress || 0}%` }}
+                transition={{ duration: 1.5, ease: "easeOut" }}
+              />
             </div>
           </div>
 
           {/* Badges */}
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
-              <Trophy className="h-5 w-5" style={{ color: countryTheme.primaryColor }} />
+            <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center space-x-2">
+              <Trophy className="h-6 w-6" style={{ color: countryTheme.primaryColor }} />
               <span>{t('dashboard.badges')}</span>
             </h3>
-            <div className="flex flex-wrap gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {badges.map((badge, index) => (
                 <motion.div
                   key={badge.id}
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.3, delay: index * 0.1 }}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-xl border-2 transition-all ${
+                  whileHover={{ scale: 1.05, y: -2 }}
+                  className={`flex items-center space-x-3 p-4 rounded-2xl border-2 transition-all duration-300 ${
                     badge.earned
-                      ? 'bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-200 text-yellow-800 shadow-md'
+                      ? 'bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-200 text-yellow-800 shadow-medium'
                       : 'bg-gray-50 border-gray-200 text-gray-400'
                   }`}
                 >
-                  <span className="text-lg">{badge.icon}</span>
-                  <div>
-                    <div className="font-medium">{badge.name}</div>
-                    <div className="text-xs opacity-75">{badge.description}</div>
+                  <motion.span 
+                    className="text-2xl"
+                    animate={badge.earned ? { rotate: [0, 10, -10, 0] } : {}}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  >
+                    {badge.icon}
+                  </motion.span>
+                  <div className="flex-1">
+                    <div className="font-bold">{badge.name}</div>
+                    <div className="text-sm opacity-75">{badge.description}</div>
                   </div>
                   {badge.earned && (
-                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ delay: 0.2 }}
+                    >
+                      <CheckCircle className="h-5 w-5 text-green-500" />
+                    </motion.div>
                   )}
                 </motion.div>
               ))}
@@ -260,26 +326,37 @@ const Dashboard: React.FC = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.5 }}
-          className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100"
+          className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-large p-8 border border-gray-100/50"
         >
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">{t('dashboard.availableLessons')}</h2>
-            <div className="text-sm text-gray-600">
-              {analytics.completionRate}% completed
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="text-3xl font-bold text-gray-900">{t('dashboard.availableLessons')}</h2>
+            <div className="flex items-center space-x-2 text-sm text-gray-600">
+              <BarChart3 className="h-5 w-5" />
+              <span className="font-semibold">{analytics.completionRate}% completed</span>
             </div>
           </div>
 
           {lessonsWithProgress.length === 0 ? (
-            <div className="text-center py-12">
-              <BookOpen className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Content Coming Soon</h3>
-              <p className="text-gray-600 mb-4">
+            <motion.div 
+              className="text-center py-16"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3 }}
+            >
+              <motion.div
+                animate={{ y: [0, -10, 0] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              >
+                <BookOpen className="h-20 w-20 text-gray-300 mx-auto mb-6" />
+              </motion.div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">Content Coming Soon</h3>
+              <p className="text-gray-600 mb-6 text-lg">
                 Localized content for {countryData?.name} in {languageData?.nativeName} is being prepared.
               </p>
               <p className="text-sm text-gray-500">
                 In the meantime, you can explore our general traffic safety content.
               </p>
-            </div>
+            </motion.div>
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {lessonsWithProgress.map((lesson, index) => (
@@ -288,43 +365,51 @@ const Dashboard: React.FC = () => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, delay: index * 0.1 }}
-                  className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-6 hover:shadow-lg transition-all duration-200 border border-gray-200 group"
+                  whileHover={{ scale: 1.02, y: -4 }}
+                  className="bg-gradient-to-br from-gray-50 to-gray-100/50 rounded-3xl p-6 hover:shadow-large transition-all duration-300 border border-gray-200/50 group backdrop-blur-sm"
                 >
                   <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center space-x-2">
-                      <div 
-                        className="rounded-lg p-2"
+                    <div className="flex items-center space-x-3">
+                      <motion.div 
+                        className="rounded-2xl p-3 shadow-lg"
                         style={{ background: `linear-gradient(135deg, ${countryTheme.primaryColor}, ${countryTheme.secondaryColor})` }}
+                        whileHover={{ rotate: 360 }}
+                        transition={{ duration: 0.6 }}
                       >
-                        <BookOpen className="h-4 w-4 text-white" />
-                      </div>
-                      <span className="text-sm font-medium text-gray-600">
+                        <BookOpen className="h-5 w-5 text-white" />
+                      </motion.div>
+                      <span className="text-sm font-bold text-gray-600 bg-white/80 px-3 py-1 rounded-full">
                         {t('lessons.level')} {lesson.level}
                       </span>
                     </div>
                     {lesson.completed && (
-                      <div className="flex items-center space-x-1">
-                        <CheckCircle className="h-5 w-5 text-green-500" />
-                        <Star className="h-4 w-4 text-yellow-500" />
-                      </div>
+                      <motion.div 
+                        className="flex items-center space-x-1"
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                      >
+                        <CheckCircle className="h-6 w-6 text-green-500" />
+                        <Star className="h-5 w-5 text-yellow-500" />
+                      </motion.div>
                     )}
                   </div>
                   
-                  <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors">
+                  <h3 className="font-bold text-gray-900 mb-3 line-clamp-2 group-hover:text-blue-600 transition-colors text-lg">
                     {lesson.title}
                   </h3>
-                  <p className="text-gray-600 text-sm mb-4 line-clamp-3">
+                  <p className="text-gray-600 text-sm mb-6 line-clamp-3 leading-relaxed">
                     {lesson.description}
                   </p>
                   
                   <Link
                     to={`/lessons/${lesson.id}`}
-                    className="flex items-center justify-center space-x-2 w-full text-white py-2 px-4 rounded-lg transition-all duration-200 text-sm font-medium shadow-md hover:shadow-lg"
+                    className="flex items-center justify-center space-x-2 w-full text-white py-3 px-4 rounded-2xl transition-all duration-300 text-sm font-bold shadow-lg hover:shadow-xl transform hover:scale-105"
                     style={{ 
                       background: `linear-gradient(135deg, ${countryTheme.primaryColor}, ${countryTheme.secondaryColor})` 
                     }}
                   >
-                    <PlayCircle className="h-4 w-4" />
+                    <PlayCircle className="h-5 w-5" />
                     <span>{lesson.completed ? t('lessons.continue') : t('lessons.start')}</span>
                   </Link>
                 </motion.div>
