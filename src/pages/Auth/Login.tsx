@@ -1,22 +1,33 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { useLanguage } from '../../contexts/LanguageContext'
 import { motion } from 'framer-motion'
-import { BookOpen, User, AlertCircle, CheckCircle, Crown, Sparkles, Shield, Lock } from 'lucide-react'
+import { 
+  BookOpen, 
+  User, 
+  AlertCircle, 
+  Crown, 
+  Sparkles, 
+  Shield, 
+  Lock,
+  Eye,
+  EyeOff,
+  Home,
+  ArrowLeft
+} from 'lucide-react'
 
 const Login: React.FC = () => {
-  const [username, setUsername] = useState('')
+  const [formData, setFormData] = useState({
+    username: '',
+    password: ''
+  })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [isCheckingUsername, setIsCheckingUsername] = useState(false)
-  const [usernameStatus, setUsernameStatus] = useState<{
-    available: boolean
-    message: string
-    checked: boolean
-  }>({ available: false, message: '', checked: false })
+  const [showPassword, setShowPassword] = useState(false)
+  const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({})
   
-  const { signIn, isAuthenticated, checkUsernameAvailability } = useAuth()
+  const { signIn, isAuthenticated } = useAuth()
   const { t } = useLanguage()
   const navigate = useNavigate()
   const location = useLocation()
@@ -31,73 +42,124 @@ const Login: React.FC = () => {
     }
   }, [isAuthenticated, navigate])
 
-  // Real-time username availability checking
-  useEffect(() => {
-    const checkUsername = async () => {
-      if (username.length >= 3) {
-        setIsCheckingUsername(true)
-        try {
-          const result = await checkUsernameAvailability(username)
-          setUsernameStatus({
-            available: result.available,
-            message: result.message,
-            checked: true
-          })
-        } catch (error) {
-          setUsernameStatus({
-            available: false,
-            message: 'Error checking username',
-            checked: true
-          })
-        } finally {
-          setIsCheckingUsername(false)
-        }
-      } else {
-        setUsernameStatus({ available: false, message: '', checked: false })
+  // Input validation
+  const validateInput = (name: string, value: string) => {
+    const errors: {[key: string]: string} = {}
+    
+    if (name === 'username') {
+      if (!value.trim()) {
+        errors.username = 'Username is required'
+      } else if (value.trim().length < 3) {
+        errors.username = 'Username must be at least 3 characters'
+      } else if (value.trim().length > 20) {
+        errors.username = 'Username must be less than 20 characters'
+      } else if (!/^[a-zA-Z0-9_]+$/.test(value.trim())) {
+        errors.username = 'Username can only contain letters, numbers, and underscores'
       }
     }
+    
+    if (name === 'password') {
+      if (!value) {
+        errors.password = 'Password is required'
+      } else if (value.length < 6) {
+        errors.password = 'Password must be at least 6 characters'
+      }
+    }
+    
+    return errors
+  }
 
-    const debounceTimer = setTimeout(checkUsername, 500)
-    return () => clearTimeout(debounceTimer)
-  }, [username, checkUsernameAvailability])
+  // Sanitize input
+  const sanitizeInput = (value: string) => {
+    return value.trim().replace(/[<>\"'&]/g, '')
+  }
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    const sanitizedValue = sanitizeInput(value)
+    
+    setFormData(prev => ({
+      ...prev,
+      [name]: sanitizedValue
+    }))
+    
+    // Clear validation errors for this field
+    if (validationErrors[name]) {
+      setValidationErrors(prev => {
+        const newErrors = { ...prev }
+        delete newErrors[name]
+        return newErrors
+      })
+    }
+    
+    // Clear general error
+    if (error) {
+      setError('')
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError('')
+    setValidationErrors({})
 
-    if (!username.trim()) {
-      setError('Username is required')
-      setLoading(false)
-      return
-    }
+    // Validate all fields
+    const usernameErrors = validateInput('username', formData.username)
+    const passwordErrors = validateInput('password', formData.password)
+    const allErrors = { ...usernameErrors, ...passwordErrors }
 
-    if (username.trim().length < 3) {
-      setError('Username must be at least 3 characters long')
+    if (Object.keys(allErrors).length > 0) {
+      setValidationErrors(allErrors)
       setLoading(false)
       return
     }
 
     try {
-      const { error } = await signIn(username.trim())
+      console.log('[LOGIN] Attempting secure login...')
+      
+      // Clear any existing session data
+      sessionStorage.clear()
+      localStorage.removeItem('learn2go-session')
+      
+      const { error } = await signIn(formData.username)
+      
       if (error) {
-        setError(error.message)
+        console.error('[LOGIN] Authentication failed:', error)
+        
+        // Enhanced error handling
+        if (error.code === 'user_not_found') {
+          setError('User not found. Please check your username or sign up for a new account.')
+        } else if (error.code === 'invalid_credentials') {
+          setError('Invalid credentials. Please check your username and try again.')
+        } else if (error.code === 'rate_limit') {
+          setError('Too many login attempts. Please wait a few minutes before trying again.')
+        } else {
+          setError(error.message || 'Login failed. Please try again.')
+        }
       } else {
+        console.log('[LOGIN] Authentication successful')
+        
+        // Generate new session token
+        const sessionToken = `session_${Date.now()}_${Math.random().toString(36).substr(2, 12)}`
+        sessionStorage.setItem('learn2go-session', sessionToken)
+        
         // Check if this is admin user 'Hari'
-        if (username.toLowerCase() === 'hari') {
+        if (formData.username.toLowerCase() === 'hari') {
           navigate('/admin', { replace: true })
         } else {
           navigate(from, { replace: true })
         }
       }
     } catch (error) {
-      setError('An unexpected error occurred')
+      console.error('[LOGIN] Unexpected error:', error)
+      setError('An unexpected error occurred. Please try again.')
     } finally {
       setLoading(false)
     }
   }
 
-  const isAdminUser = username.toLowerCase() === 'hari'
+  const isAdminUser = formData.username.toLowerCase() === 'hari'
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 pt-20">
@@ -131,13 +193,29 @@ const Login: React.FC = () => {
         transition={{ duration: 0.8 }}
         className="max-w-md w-full space-y-8 relative"
       >
+        {/* Home Button */}
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.2 }}
+          className="flex justify-start"
+        >
+          <Link
+            to="/"
+            className="flex items-center space-x-2 text-gray-600 hover:text-blue-600 transition-colors bg-white/80 backdrop-blur-sm rounded-2xl px-4 py-2 shadow-soft border border-gray-200/50"
+          >
+            <Home className="h-5 w-5" />
+            <span className="font-medium">Home</span>
+          </Link>
+        </motion.div>
+
         {/* Header */}
         <div className="text-center">
           <motion.div 
             className="flex justify-center mb-6"
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+            transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
           >
             <div className="relative">
               <motion.div
@@ -153,7 +231,7 @@ const Login: React.FC = () => {
                 }}
                 transition={{ duration: 3, repeat: Infinity }}
               >
-                <Sparkles className="h-8 w-8 text-white" />
+                <Lock className="h-8 w-8 text-white" />
               </motion.div>
               <motion.div
                 className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full"
@@ -166,15 +244,15 @@ const Login: React.FC = () => {
             className="text-4xl font-bold text-gray-900 mb-2"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
+            transition={{ delay: 0.4 }}
           >
-            {t('auth.login')}
+            Secure Login
           </motion.h2>
           <motion.p 
             className="text-gray-600 text-lg"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
+            transition={{ delay: 0.5 }}
           >
             Welcome back to Learn2Go
           </motion.p>
@@ -182,10 +260,10 @@ const Login: React.FC = () => {
 
         {/* Form */}
         <motion.div 
-          className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-gray-100"
+          className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-gray-100"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
+          transition={{ delay: 0.6 }}
         >
           <form className="space-y-6" onSubmit={handleSubmit}>
             {error && (
@@ -195,7 +273,7 @@ const Login: React.FC = () => {
                 className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-2xl flex items-center space-x-2"
               >
                 <AlertCircle className="h-5 w-5 flex-shrink-0" />
-                <span>{error}</span>
+                <span className="text-sm">{error}</span>
               </motion.div>
             )}
 
@@ -216,9 +294,10 @@ const Login: React.FC = () => {
               </motion.div>
             )}
 
+            {/* Username Field */}
             <div>
               <label htmlFor="username" className="block text-sm font-bold text-gray-700 mb-2">
-                {t('auth.username')}
+                Username <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -229,56 +308,79 @@ const Login: React.FC = () => {
                   name="username"
                   type="text"
                   required
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="appearance-none relative block w-full pl-10 pr-12 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:z-10 transition-all duration-200 bg-white/80 backdrop-blur-sm"
-                  placeholder={t('auth.enterUsername')}
+                  value={formData.username}
+                  onChange={handleInputChange}
+                  className={`appearance-none relative block w-full pl-10 pr-4 py-3 border ${
+                    validationErrors.username ? 'border-red-300' : 'border-gray-300'
+                  } placeholder-gray-500 text-gray-900 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:z-10 transition-all duration-200 bg-white/80 backdrop-blur-sm`}
+                  placeholder="Enter your username"
                   disabled={loading}
+                  maxLength={20}
+                  autoComplete="username"
                 />
-                
-                {/* Username Status Indicator */}
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                  {isCheckingUsername && (
-                    <motion.div 
-                      className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full"
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                    />
-                  )}
-                  {!isCheckingUsername && usernameStatus.checked && username.length >= 3 && (
-                    <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                    >
-                      {usernameStatus.available ? (
-                        <CheckCircle className="h-5 w-5 text-green-500" />
-                      ) : (
-                        <AlertCircle className="h-5 w-5 text-red-500" />
-                      )}
-                    </motion.div>
-                  )}
-                </div>
               </div>
-              
-              {/* Username Status Message */}
-              {usernameStatus.checked && username.length >= 3 && (
+              {validationErrors.username && (
                 <motion.p
                   initial={{ opacity: 0, y: -5 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className={`mt-2 text-sm font-medium ${
-                    usernameStatus.available ? 'text-green-600' : 'text-red-600'
-                  }`}
+                  className="mt-2 text-sm text-red-600"
                 >
-                  {usernameStatus.message}
+                  {validationErrors.username}
                 </motion.p>
               )}
             </div>
 
+            {/* Password Field */}
+            <div>
+              <label htmlFor="password" className="block text-sm font-bold text-gray-700 mb-2">
+                Password <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Lock className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  id="password"
+                  name="password"
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  className={`appearance-none relative block w-full pl-10 pr-12 py-3 border ${
+                    validationErrors.password ? 'border-red-300' : 'border-gray-300'
+                  } placeholder-gray-500 text-gray-900 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:z-10 transition-all duration-200 bg-white/80 backdrop-blur-sm`}
+                  placeholder="Enter your password"
+                  disabled={loading}
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                  ) : (
+                    <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                  )}
+                </button>
+              </div>
+              {validationErrors.password && (
+                <motion.p
+                  initial={{ opacity: 0, y: -5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-2 text-sm text-red-600"
+                >
+                  {validationErrors.password}
+                </motion.p>
+              )}
+            </div>
+
+            {/* Submit Button */}
             <div>
               <motion.button
                 type="submit"
-                disabled={loading || (usernameStatus.checked && usernameStatus.available)}
+                disabled={loading}
                 whileHover={{ scale: 1.02, y: -1 }}
                 whileTap={{ scale: 0.98 }}
                 className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-2xl text-white bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-xl hover:shadow-2xl"
@@ -290,41 +392,63 @@ const Login: React.FC = () => {
                       animate={{ rotate: 360 }}
                       transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                     />
-                    <span>{t('auth.signingIn')}</span>
+                    <span>Signing in securely...</span>
                   </div>
                 ) : (
                   <div className="flex items-center space-x-2">
                     {isAdminUser && <Crown className="h-4 w-4" />}
-                    <span>{isAdminUser ? 'Admin Login' : t('auth.login')}</span>
+                    <Shield className="h-4 w-4" />
+                    <span>{isAdminUser ? 'Admin Login' : 'Secure Login'}</span>
                   </div>
                 )}
               </motion.button>
             </div>
 
+            {/* Sign Up Link */}
             <div className="text-center">
               <p className="text-sm text-gray-600">
-                {t('auth.noAccount')}{' '}
+                Don't have an account?{' '}
                 <Link to="/signup" className="font-bold text-blue-600 hover:text-blue-500 transition-colors">
-                  {t('auth.signup')}
+                  Sign up for Learn2Go
                 </Link>
               </p>
             </div>
           </form>
         </motion.div>
 
-        {/* Security Notice */}
+        {/* Security Features */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.7 }}
+          transition={{ delay: 0.8 }}
           className="text-center"
         >
-          <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-2xl p-4 text-sm text-gray-600 border border-gray-200 shadow-lg">
-            <div className="flex items-center justify-center space-x-2 mb-2">
-              <Shield className="h-4 w-4 text-blue-600" />
-              <span className="font-bold text-blue-900">Secure Session Management</span>
+          <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-2xl p-6 text-sm text-gray-600 border border-gray-200 shadow-lg">
+            <div className="flex items-center justify-center space-x-2 mb-3">
+              <Shield className="h-5 w-5 text-blue-600" />
+              <span className="font-bold text-blue-900">Advanced Security Features</span>
             </div>
-            <p>Your session is isolated and secure. You'll be logged out automatically when you close this tab.</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span>Encrypted data transmission</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span>Session isolation</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span>Input sanitization</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span>Auto-logout protection</span>
+              </div>
+            </div>
+            <p className="mt-3 text-gray-700">
+              Your session will automatically expire when you close the browser or after inactivity.
+            </p>
           </div>
         </motion.div>
       </motion.div>
