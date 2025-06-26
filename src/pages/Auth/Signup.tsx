@@ -3,16 +3,36 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { useLanguage } from '../../contexts/LanguageContext'
 import { motion } from 'framer-motion'
-import { BookOpen, User, ArrowRight, ArrowLeft, AlertCircle, CheckCircle, Crown, Shield } from 'lucide-react'
+import { 
+  BookOpen, 
+  User, 
+  ArrowRight, 
+  ArrowLeft, 
+  AlertCircle, 
+  CheckCircle, 
+  Crown, 
+  Shield,
+  Home,
+  Lock,
+  Eye,
+  EyeOff
+} from 'lucide-react'
 import CountryLanguageSelector from '../../components/CountryLanguageSelector'
 
 const Signup: React.FC = () => {
   const [step, setStep] = useState(1)
-  const [username, setUsername] = useState('')
+  const [formData, setFormData] = useState({
+    username: '',
+    password: '',
+    confirmPassword: ''
+  })
   const [country, setCountry] = useState('')
   const [language, setLanguage] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({})
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isCheckingUsername, setIsCheckingUsername] = useState(false)
   const [usernameStatus, setUsernameStatus] = useState<{
     available: boolean
@@ -31,13 +51,13 @@ const Signup: React.FC = () => {
     }
   }, [isAuthenticated, navigate])
 
-  // Enhanced username validation with real-time checking
+  // Username availability checking (debounced)
   useEffect(() => {
     const checkUsername = async () => {
-      if (username.length >= 3) {
+      if (formData.username.length >= 3) {
         setIsCheckingUsername(true)
         try {
-          const result = await checkUsernameAvailability(username)
+          const result = await checkUsernameAvailability(formData.username)
           setUsernameStatus({
             available: result.available,
             message: result.message,
@@ -59,29 +79,87 @@ const Signup: React.FC = () => {
 
     const debounceTimer = setTimeout(checkUsername, 500)
     return () => clearTimeout(debounceTimer)
-  }, [username, checkUsernameAvailability])
+  }, [formData.username, checkUsernameAvailability])
 
-  // Enhanced username validation
-  const validateUsername = (value: string) => {
-    if (!value || value.length < 3) {
-      return 'Username must be at least 3 characters long'
+  // Input validation
+  const validateInput = (name: string, value: string) => {
+    const errors: {[key: string]: string} = {}
+    
+    if (name === 'username') {
+      if (!value.trim()) {
+        errors.username = 'Username is required'
+      } else if (value.trim().length < 3) {
+        errors.username = 'Username must be at least 3 characters'
+      } else if (value.trim().length > 20) {
+        errors.username = 'Username must be less than 20 characters'
+      } else if (!/^[a-zA-Z0-9_]+$/.test(value.trim())) {
+        errors.username = 'Username can only contain letters, numbers, and underscores'
+      }
     }
-    if (value.length > 20) {
-      return 'Username must be less than 20 characters'
+    
+    if (name === 'password') {
+      if (!value) {
+        errors.password = 'Password is required'
+      } else if (value.length < 8) {
+        errors.password = 'Password must be at least 8 characters'
+      } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(value)) {
+        errors.password = 'Password must contain at least one uppercase letter, one lowercase letter, and one number'
+      }
     }
-    if (!/^[a-zA-Z0-9_]+$/.test(value)) {
-      return 'Username can only contain letters, numbers, and underscores'
+    
+    if (name === 'confirmPassword') {
+      if (!value) {
+        errors.confirmPassword = 'Please confirm your password'
+      } else if (value !== formData.password) {
+        errors.confirmPassword = 'Passwords do not match'
+      }
     }
-    return null
+    
+    return errors
+  }
+
+  // Sanitize input
+  const sanitizeInput = (value: string) => {
+    return value.trim().replace(/[<>\"'&]/g, '')
+  }
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    const sanitizedValue = name === 'password' || name === 'confirmPassword' ? value : sanitizeInput(value)
+    
+    setFormData(prev => ({
+      ...prev,
+      [name]: sanitizedValue
+    }))
+    
+    // Clear validation errors for this field
+    if (validationErrors[name]) {
+      setValidationErrors(prev => {
+        const newErrors = { ...prev }
+        delete newErrors[name]
+        return newErrors
+      })
+    }
+    
+    // Clear general error
+    if (error) {
+      setError('')
+    }
   }
 
   const handleUsernameSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setValidationErrors({})
 
-    const validationError = validateUsername(username.trim())
-    if (validationError) {
-      setError(validationError)
+    // Validate username and password
+    const usernameErrors = validateInput('username', formData.username)
+    const passwordErrors = validateInput('password', formData.password)
+    const confirmPasswordErrors = validateInput('confirmPassword', formData.confirmPassword)
+    const allErrors = { ...usernameErrors, ...passwordErrors, ...confirmPasswordErrors }
+
+    if (Object.keys(allErrors).length > 0) {
+      setValidationErrors(allErrors)
       return
     }
 
@@ -109,66 +187,142 @@ const Signup: React.FC = () => {
     }
 
     try {
-      const { error } = await signUp(username.trim(), country, language)
+      console.log('[SIGNUP] Starting secure registration...')
+      
+      // Clear any existing session data
+      sessionStorage.clear()
+      localStorage.removeItem('learn2go-session')
+      
+      const { error } = await signUp(formData.username, country, language)
+      
       if (error) {
+        console.error('[SIGNUP] Registration failed:', error)
         setError(error.message)
       } else {
+        console.log('[SIGNUP] Registration successful')
+        
         // Set the app language to user's selection
         setAppLanguage(language)
         
+        // Generate new session token
+        const sessionToken = `session_${Date.now()}_${Math.random().toString(36).substr(2, 12)}`
+        sessionStorage.setItem('learn2go-session', sessionToken)
+        
         // Check if this is admin user 'Hari'
-        if (username.toLowerCase() === 'hari') {
+        if (formData.username.toLowerCase() === 'hari') {
           navigate('/admin', { replace: true })
         } else {
           navigate('/dashboard', { replace: true })
         }
       }
     } catch (error) {
-      setError('An unexpected error occurred')
+      console.error('[SIGNUP] Unexpected error:', error)
+      setError('An unexpected error occurred during registration')
     } finally {
       setLoading(false)
     }
   }
 
-  const isAdminUser = username.toLowerCase() === 'hari'
+  const isAdminUser = formData.username.toLowerCase() === 'hari'
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 pt-20">
+      {/* Animated Background Elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        {[...Array(8)].map((_, i) => (
+          <motion.div
+            key={i}
+            className="absolute w-3 h-3 bg-green-300/20 rounded-full"
+            animate={{
+              x: [0, 120, 0],
+              y: [0, -120, 0],
+              scale: [1, 1.5, 1],
+            }}
+            transition={{
+              duration: 12 + i * 2,
+              repeat: Infinity,
+              delay: i * 1.5,
+            }}
+            style={{
+              left: `${5 + i * 12}%`,
+              top: `${15 + i * 10}%`,
+            }}
+          />
+        ))}
+      </div>
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}
-        className="max-w-md w-full space-y-8"
+        className="max-w-md w-full space-y-8 relative"
       >
+        {/* Home Button */}
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.2 }}
+          className="flex justify-start"
+        >
+          <Link
+            to="/"
+            className="flex items-center space-x-2 text-gray-600 hover:text-blue-600 transition-colors bg-white/80 backdrop-blur-sm rounded-2xl px-4 py-2 shadow-soft border border-gray-200/50"
+          >
+            <Home className="h-5 w-5" />
+            <span className="font-medium">Home</span>
+          </Link>
+        </motion.div>
+
         {/* Header */}
         <div className="text-center">
-          <div className="flex justify-center mb-6">
+          <motion.div 
+            className="flex justify-center mb-6"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
+          >
             <div className="relative">
-              <img 
-                src="/src/assets/ChatGPT Image Jun 21, 2025, 03_33_49 PM copy.png" 
-                alt="Learn2Go Logo" 
-                className="h-16 w-auto"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none'
-                  e.currentTarget.nextElementSibling?.classList.remove('hidden')
+              <motion.div
+                className="w-16 h-16 bg-gradient-to-br from-blue-500 via-green-500 to-purple-500 rounded-3xl flex items-center justify-center shadow-2xl"
+                whileHover={{ scale: 1.1, rotate: 5 }}
+                animate={{ 
+                  boxShadow: [
+                    "0 20px 40px rgba(34, 197, 94, 0.3)",
+                    "0 20px 40px rgba(59, 130, 246, 0.3)",
+                    "0 20px 40px rgba(139, 92, 246, 0.3)",
+                    "0 20px 40px rgba(34, 197, 94, 0.3)"
+                  ]
                 }}
+                transition={{ duration: 3, repeat: Infinity }}
+              >
+                <Shield className="h-8 w-8 text-white" />
+              </motion.div>
+              <motion.div
+                className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full"
+                animate={{ scale: [1, 1.2, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
               />
-              <div className="hidden bg-gradient-to-r from-blue-500 to-green-600 p-4 rounded-2xl">
-                <div className="w-8 h-8 bg-white rounded-xl flex items-center justify-center">
-                  <div className="w-4 h-4 bg-gradient-to-b from-red-500 via-yellow-500 to-green-500 rounded-full"></div>
-                </div>
-              </div>
             </div>
-          </div>
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">
-            {t('auth.signup')}
-          </h2>
-          <p className="text-gray-600">
-            {step === 1 ? 'Choose your unique username' : 'Select your location and language preferences'}
-          </p>
+          </motion.div>
+          <motion.h2 
+            className="text-4xl font-bold text-gray-900 mb-2"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+          >
+            Join Learn2Go
+          </motion.h2>
+          <motion.p 
+            className="text-gray-600 text-lg"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+          >
+            {step === 1 ? 'Create your secure account' : 'Complete your profile setup'}
+          </motion.p>
         </div>
 
-        {/* Enhanced Progress Indicator */}
+        {/* Progress Indicator */}
         <div className="flex items-center justify-center space-x-4 mb-8">
           <div className={`flex items-center justify-center w-10 h-10 rounded-full text-sm font-medium transition-all duration-300 ${
             step >= 1 ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-200 text-gray-600'
@@ -184,31 +338,36 @@ const Signup: React.FC = () => {
         </div>
 
         {/* Form */}
-        <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+        <motion.div 
+          className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-gray-100"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+        >
           {error && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-6 flex items-center space-x-2"
+              className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-2xl mb-6 flex items-center space-x-2"
             >
               <AlertCircle className="h-5 w-5 flex-shrink-0" />
-              <span>{error}</span>
+              <span className="text-sm">{error}</span>
             </motion.div>
           )}
 
           {step === 1 ? (
-            /* Step 1: Enhanced Username Input */
+            /* Step 1: Account Creation */
             <form onSubmit={handleUsernameSubmit} className="space-y-6">
               {/* Admin User Detection */}
               {isAdminUser && (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-xl p-4"
+                  className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-2xl p-4"
                 >
                   <div className="flex items-center space-x-2">
                     <Crown className="h-5 w-5 text-purple-600" />
-                    <span className="font-medium text-purple-800">Admin Account Setup</span>
+                    <span className="font-bold text-purple-800">Admin Account Setup</span>
                   </div>
                   <p className="text-purple-700 text-sm mt-1">
                     Setting up admin account with full dashboard access and user management capabilities.
@@ -216,9 +375,10 @@ const Signup: React.FC = () => {
                 </motion.div>
               )}
 
+              {/* Username Field */}
               <div>
-                <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
-                  {t('auth.username')} <span className="text-red-500">*</span>
+                <label htmlFor="username" className="block text-sm font-bold text-gray-700 mb-2">
+                  Username <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -229,26 +389,37 @@ const Signup: React.FC = () => {
                     name="username"
                     type="text"
                     required
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className="appearance-none relative block w-full pl-10 pr-12 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:z-10 transition-all duration-200"
-                    placeholder={t('auth.enterUsername')}
+                    value={formData.username}
+                    onChange={handleInputChange}
+                    className={`appearance-none relative block w-full pl-10 pr-12 py-3 border ${
+                      validationErrors.username ? 'border-red-300' : 'border-gray-300'
+                    } placeholder-gray-500 text-gray-900 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:z-10 transition-all duration-200 bg-white/80 backdrop-blur-sm`}
+                    placeholder="Choose a unique username"
                     maxLength={20}
+                    autoComplete="username"
                   />
                   
-                  {/* Enhanced Status Indicator */}
+                  {/* Status Indicator */}
                   <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
                     {isCheckingUsername && (
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                      <motion.div 
+                        className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full"
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                      />
                     )}
-                    {!isCheckingUsername && usernameStatus.checked && username.length >= 3 && (
-                      <>
+                    {!isCheckingUsername && usernameStatus.checked && formData.username.length >= 3 && (
+                      <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                      >
                         {usernameStatus.available ? (
                           <CheckCircle className="h-5 w-5 text-green-500" />
                         ) : (
                           <AlertCircle className="h-5 w-5 text-red-500" />
                         )}
-                      </>
+                      </motion.div>
                     )}
                   </div>
                 </div>
@@ -256,17 +427,17 @@ const Signup: React.FC = () => {
                 {/* Character Counter */}
                 <div className="flex justify-between items-center mt-2">
                   <div className="text-xs text-gray-500">
-                    {username.length}/20 characters
+                    {formData.username.length}/20 characters
                   </div>
-                  {username.length > 0 && (
-                    <div className={`text-xs ${username.length <= 20 ? 'text-green-600' : 'text-red-600'}`}>
-                      {username.length <= 20 ? '✓ Valid length' : '✗ Too long'}
+                  {formData.username.length > 0 && (
+                    <div className={`text-xs ${formData.username.length <= 20 ? 'text-green-600' : 'text-red-600'}`}>
+                      {formData.username.length <= 20 ? '✓ Valid length' : '✗ Too long'}
                     </div>
                   )}
                 </div>
                 
-                {/* Enhanced Status Message */}
-                {usernameStatus.checked && username.length >= 3 && (
+                {/* Status Message */}
+                {usernameStatus.checked && formData.username.length >= 3 && (
                   <motion.div
                     initial={{ opacity: 0, y: -5 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -287,34 +458,134 @@ const Signup: React.FC = () => {
                   </motion.div>
                 )}
                 
-                {/* Username Requirements */}
-                <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-                  <p className="text-xs font-medium text-gray-700 mb-2">Username Requirements:</p>
-                  <ul className="text-xs text-gray-600 space-y-1">
-                    <li className={`flex items-center space-x-1 ${username.length >= 3 ? 'text-green-600' : ''}`}>
-                      <span>{username.length >= 3 ? '✓' : '•'}</span>
-                      <span>At least 3 characters long</span>
-                    </li>
-                    <li className={`flex items-center space-x-1 ${username.length <= 20 ? 'text-green-600' : 'text-red-600'}`}>
-                      <span>{username.length <= 20 ? '✓' : '✗'}</span>
-                      <span>Maximum 20 characters</span>
-                    </li>
-                    <li className={`flex items-center space-x-1 ${/^[a-zA-Z0-9_]*$/.test(username) ? 'text-green-600' : username.length > 0 ? 'text-red-600' : ''}`}>
-                      <span>{/^[a-zA-Z0-9_]*$/.test(username) && username.length > 0 ? '✓' : username.length > 0 ? '✗' : '•'}</span>
-                      <span>Only letters, numbers, and underscores</span>
-                    </li>
-                    <li className={`flex items-center space-x-1 ${usernameStatus.available && usernameStatus.checked ? 'text-green-600' : ''}`}>
-                      <span>{usernameStatus.available && usernameStatus.checked ? '✓' : '•'}</span>
-                      <span>Must be unique</span>
-                    </li>
-                  </ul>
+                {validationErrors.username && (
+                  <motion.p
+                    initial={{ opacity: 0, y: -5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-2 text-sm text-red-600"
+                  >
+                    {validationErrors.username}
+                  </motion.p>
+                )}
+              </div>
+
+              {/* Password Field */}
+              <div>
+                <label htmlFor="password" className="block text-sm font-bold text-gray-700 mb-2">
+                  Password <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Lock className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    id="password"
+                    name="password"
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    className={`appearance-none relative block w-full pl-10 pr-12 py-3 border ${
+                      validationErrors.password ? 'border-red-300' : 'border-gray-300'
+                    } placeholder-gray-500 text-gray-900 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:z-10 transition-all duration-200 bg-white/80 backdrop-blur-sm`}
+                    placeholder="Create a strong password"
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                    ) : (
+                      <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                    )}
+                  </button>
                 </div>
+                {validationErrors.password && (
+                  <motion.p
+                    initial={{ opacity: 0, y: -5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-2 text-sm text-red-600"
+                  >
+                    {validationErrors.password}
+                  </motion.p>
+                )}
+              </div>
+
+              {/* Confirm Password Field */}
+              <div>
+                <label htmlFor="confirmPassword" className="block text-sm font-bold text-gray-700 mb-2">
+                  Confirm Password <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Lock className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    required
+                    value={formData.confirmPassword}
+                    onChange={handleInputChange}
+                    className={`appearance-none relative block w-full pl-10 pr-12 py-3 border ${
+                      validationErrors.confirmPassword ? 'border-red-300' : 'border-gray-300'
+                    } placeholder-gray-500 text-gray-900 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:z-10 transition-all duration-200 bg-white/80 backdrop-blur-sm`}
+                    placeholder="Confirm your password"
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                    ) : (
+                      <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                    )}
+                  </button>
+                </div>
+                {validationErrors.confirmPassword && (
+                  <motion.p
+                    initial={{ opacity: 0, y: -5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-2 text-sm text-red-600"
+                  >
+                    {validationErrors.confirmPassword}
+                  </motion.p>
+                )}
+              </div>
+
+              {/* Password Requirements */}
+              <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                <p className="text-xs font-medium text-gray-700 mb-2">Password Requirements:</p>
+                <ul className="text-xs text-gray-600 space-y-1">
+                  <li className={`flex items-center space-x-1 ${formData.password.length >= 8 ? 'text-green-600' : ''}`}>
+                    <span>{formData.password.length >= 8 ? '✓' : '•'}</span>
+                    <span>At least 8 characters long</span>
+                  </li>
+                  <li className={`flex items-center space-x-1 ${/(?=.*[a-z])/.test(formData.password) ? 'text-green-600' : ''}`}>
+                    <span>{/(?=.*[a-z])/.test(formData.password) ? '✓' : '•'}</span>
+                    <span>One lowercase letter</span>
+                  </li>
+                  <li className={`flex items-center space-x-1 ${/(?=.*[A-Z])/.test(formData.password) ? 'text-green-600' : ''}`}>
+                    <span>{/(?=.*[A-Z])/.test(formData.password) ? '✓' : '•'}</span>
+                    <span>One uppercase letter</span>
+                  </li>
+                  <li className={`flex items-center space-x-1 ${/(?=.*\d)/.test(formData.password) ? 'text-green-600' : ''}`}>
+                    <span>{/(?=.*\d)/.test(formData.password) ? '✓' : '•'}</span>
+                    <span>One number</span>
+                  </li>
+                </ul>
               </div>
 
               <button
                 type="submit"
-                disabled={!usernameStatus.available || !usernameStatus.checked || username.length < 3}
-                className="group relative w-full flex justify-center items-center space-x-2 py-3 px-4 border border-transparent text-sm font-medium rounded-xl text-white bg-gradient-to-r from-blue-500 to-green-600 hover:from-blue-600 hover:to-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl"
+                disabled={!usernameStatus.available || !usernameStatus.checked || formData.username.length < 3}
+                className="group relative w-full flex justify-center items-center space-x-2 py-3 px-4 border border-transparent text-sm font-bold rounded-2xl text-white bg-gradient-to-r from-blue-500 to-green-600 hover:from-blue-600 hover:to-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-xl hover:shadow-2xl"
               >
                 {isAdminUser && <Crown className="h-4 w-4" />}
                 <span>Continue to Location Setup</span>
@@ -323,25 +594,25 @@ const Signup: React.FC = () => {
 
               <div className="text-center">
                 <p className="text-sm text-gray-600">
-                  {t('auth.hasAccount')}{' '}
-                  <Link to="/login" className="font-medium text-blue-600 hover:text-blue-500 transition-colors">
-                    {t('auth.login')}
+                  Already have an account?{' '}
+                  <Link to="/login" className="font-bold text-blue-600 hover:text-blue-500 transition-colors">
+                    Sign in here
                   </Link>
                 </p>
               </div>
             </form>
           ) : (
-            /* Step 2: Enhanced Country and Language Selection */
+            /* Step 2: Location and Language Setup */
             <div className="space-y-6">
               {isAdminUser && (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-xl p-4"
+                  className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-2xl p-4"
                 >
                   <div className="flex items-center space-x-2">
                     <Crown className="h-5 w-5 text-purple-600" />
-                    <span className="font-medium text-purple-800">Admin Setup - Final Step</span>
+                    <span className="font-bold text-purple-800">Admin Setup - Final Step</span>
                   </div>
                   <p className="text-purple-700 text-sm mt-1">
                     Complete your admin account setup with location preferences for content customization.
@@ -355,60 +626,89 @@ const Signup: React.FC = () => {
               />
 
               <div className="flex space-x-4">
-                <button
+                <motion.button
                   onClick={() => setStep(1)}
                   disabled={loading}
-                  className="flex-1 flex justify-center items-center space-x-2 py-3 px-4 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="flex-1 flex justify-center items-center space-x-2 py-3 px-4 border border-gray-300 text-gray-700 rounded-2xl hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <ArrowLeft className="h-4 w-4" />
                   <span>Back</span>
-                </button>
+                </motion.button>
 
-                <button
+                <motion.button
                   onClick={handleFinalSubmit}
                   disabled={loading || !country || !language}
-                  className="flex-1 flex justify-center items-center space-x-2 py-3 px-4 border border-transparent text-sm font-medium rounded-xl text-white bg-gradient-to-r from-blue-500 to-green-600 hover:from-blue-600 hover:to-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl"
+                  whileHover={{ scale: 1.05, y: -1 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="flex-1 flex justify-center items-center space-x-2 py-3 px-4 border border-transparent text-sm font-bold rounded-2xl text-white bg-gradient-to-r from-blue-500 to-green-600 hover:from-blue-600 hover:to-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-xl hover:shadow-2xl"
                 >
                   {loading ? (
                     <div className="flex items-center space-x-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      <span>{t('auth.joiningUp')}</span>
+                      <motion.div 
+                        className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                      />
+                      <span>Creating account...</span>
                     </div>
                   ) : (
                     <>
                       {isAdminUser && <Crown className="h-4 w-4" />}
-                      <span>{isAdminUser ? 'Create Admin Account' : 'Join Learn2Go'}</span>
+                      <Shield className="h-4 w-4" />
+                      <span>{isAdminUser ? 'Create Admin Account' : 'Create Account'}</span>
                       <ArrowRight className="h-4 w-4" />
                     </>
                   )}
-                </button>
+                </motion.button>
               </div>
 
               <div className="text-center">
                 <p className="text-sm text-gray-600">
-                  {t('auth.hasAccount')}{' '}
-                  <Link to="/login" className="font-medium text-blue-600 hover:text-blue-500 transition-colors">
-                    {t('auth.login')}
+                  Already have an account?{' '}
+                  <Link to="/login" className="font-bold text-blue-600 hover:text-blue-500 transition-colors">
+                    Sign in here
                   </Link>
                 </p>
               </div>
             </div>
           )}
-        </div>
+        </motion.div>
 
-        {/* Enhanced Security Notice */}
+        {/* Security Notice */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
+          transition={{ delay: 0.8 }}
           className="text-center"
         >
-          <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl p-4 text-sm text-gray-600 border border-gray-200">
-            <div className="flex items-center justify-center space-x-2 mb-2">
-              <Shield className="h-4 w-4 text-blue-600" />
-              <span className="font-medium text-blue-900">Secure Registration</span>
+          <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-2xl p-6 text-sm text-gray-600 border border-gray-200 shadow-lg">
+            <div className="flex items-center justify-center space-x-2 mb-3">
+              <Shield className="h-5 w-5 text-blue-600" />
+              <span className="font-bold text-blue-900">Secure Registration</span>
             </div>
-            <p>Your account will be secured with session isolation, automatic logout protection, and real-time activity monitoring.</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span>Password encryption</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span>Session isolation</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span>Input validation</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span>Auto-logout protection</span>
+              </div>
+            </div>
+            <p className="mt-3 text-gray-700">
+              Your account will be secured with session isolation, automatic logout protection, and real-time activity monitoring.
+            </p>
           </div>
         </motion.div>
       </motion.div>

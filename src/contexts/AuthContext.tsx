@@ -107,7 +107,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [logDebugInfo])
 
-  // ULTRA SIMPLIFIED initialization - no complex operations
+  // Clear session data completely
+  const clearSessionData = useCallback(() => {
+    sessionStorage.clear()
+    localStorage.removeItem('learn2go-session')
+    localStorage.removeItem('learn2go-user')
+    
+    // Clear any other app-specific storage
+    const keysToRemove = []
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (key && key.startsWith('learn2go-')) {
+        keysToRemove.push(key)
+      }
+    }
+    keysToRemove.forEach(key => localStorage.removeItem(key))
+  }, [])
+
+  // Initialize auth state
   useEffect(() => {
     let mounted = true
 
@@ -115,12 +132,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         logDebugInfo('Starting auth initialization')
         
+        // Clear any existing session data on initialization
+        clearSessionData()
+        
         const { data: { session }, error } = await supabase.auth.getSession()
         
         if (!mounted) return
 
         if (error) {
           logDebugInfo('Error getting session', error)
+          clearSessionData()
         }
 
         if (session?.user) {
@@ -132,16 +153,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           logDebugInfo('No session found')
           setSession(null)
           setUser(null)
+          clearSessionData()
         }
       } catch (error) {
         logDebugInfo('Exception during auth initialization', error)
         if (mounted) {
           setSession(null)
           setUser(null)
+          clearSessionData()
         }
       } finally {
         if (mounted) {
-          // ALWAYS set loading to false after 100ms minimum
           setTimeout(() => {
             if (mounted) {
               setLoading(false)
@@ -153,7 +175,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     initializeAuth()
 
-    // SIMPLIFIED auth state listener
+    // Auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return
 
@@ -174,6 +196,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         logDebugInfo('User signed out')
         setSession(null)
         setUser(null)
+        clearSessionData()
       }
 
       if (event === 'TOKEN_REFRESHED' && session?.user) {
@@ -182,7 +205,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(session.user)
       }
 
-      // Ensure loading is false
       setLoading(false)
     })
 
@@ -191,11 +213,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       subscription.unsubscribe()
       logDebugInfo('Auth provider cleanup completed')
     }
-  }, [updateUserActivity, logDebugInfo])
+  }, [updateUserActivity, logDebugInfo, clearSessionData])
 
   const signIn = async (username: string) => {
     try {
       logDebugInfo(`Attempting sign in for username: ${username}`)
+      
+      // Clear any existing session data
+      clearSessionData()
       
       const tempEmail = `${username}@learn2go.local`
       const tempPassword = `${username}_temp_pass_123`
@@ -205,11 +230,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         password: tempPassword 
       })
 
-      // Enhanced error handling with specific checks
       if (error) {
         logDebugInfo('Sign in error', error)
         
-        // Check for various forms of invalid credentials
+        // Enhanced error handling
         if (error.message?.toLowerCase().includes('invalid login credentials') ||
             error.message?.toLowerCase().includes('invalid_credentials') ||
             error.code === 'invalid_credentials' ||
@@ -223,7 +247,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
         
-        // Handle other specific error cases
         if (error.message?.toLowerCase().includes('email not confirmed')) {
           return { 
             data: null, 
@@ -244,7 +267,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
         
-        // Return the original error with a fallback message
         return { 
           data: null, 
           error: { 
@@ -254,13 +276,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
 
-      // Success case
       if (data?.user) {
         logDebugInfo('Sign in successful', { username })
         return { data, error: null }
       }
 
-      // Fallback case - no data and no error (shouldn't happen)
       return { 
         data: null, 
         error: { 
@@ -272,7 +292,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error: any) {
       logDebugInfo('Exception during sign in', error)
       
-      // Handle network errors
       if (error.name === 'NetworkError' || error.message?.includes('fetch')) {
         return { 
           data: null, 
@@ -296,6 +315,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signUp = async (username: string, country: string, language: string) => {
     try {
       logDebugInfo(`Attempting sign up for username: ${username}`)
+      
+      // Clear any existing session data
+      clearSessionData()
       
       const availability = await checkUsernameAvailability(username)
       if (!availability.available) {
@@ -346,16 +368,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async (): Promise<{ success: boolean; error?: string }> => {
     try {
-      logDebugInfo('Starting instant logout')
+      logDebugInfo('Starting secure logout')
       
       // Clear state immediately
       setSession(null)
       setUser(null)
       
+      // Clear all session data
+      clearSessionData()
+      
       // Background cleanup (non-blocking)
       supabase.auth.signOut().catch(console.warn)
       
-      logDebugInfo('Instant logout completed')
+      logDebugInfo('Secure logout completed')
       return { success: true }
       
     } catch (error) {
@@ -364,6 +389,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Force clear state even on error
       setSession(null)
       setUser(null)
+      clearSessionData()
       
       return { 
         success: true, 
