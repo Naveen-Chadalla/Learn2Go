@@ -12,27 +12,18 @@ import {
   CheckCircle, 
   Crown, 
   Shield,
-  Home,
-  Lock,
-  Eye,
-  EyeOff
+  Home
 } from 'lucide-react'
 import CountryLanguageSelector from '../../components/CountryLanguageSelector'
 
 const Signup: React.FC = () => {
   const [step, setStep] = useState(1)
-  const [formData, setFormData] = useState({
-    username: '',
-    password: '',
-    confirmPassword: ''
-  })
+  const [username, setUsername] = useState('')
   const [country, setCountry] = useState('')
   const [language, setLanguage] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({})
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isCheckingUsername, setIsCheckingUsername] = useState(false)
   const [usernameStatus, setUsernameStatus] = useState<{
     available: boolean
@@ -54,10 +45,10 @@ const Signup: React.FC = () => {
   // Username availability checking (debounced)
   useEffect(() => {
     const checkUsername = async () => {
-      if (formData.username.length >= 3) {
+      if (username.length >= 3) {
         setIsCheckingUsername(true)
         try {
-          const result = await checkUsernameAvailability(formData.username)
+          const result = await checkUsernameAvailability(username)
           setUsernameStatus({
             available: result.available,
             message: result.message,
@@ -79,7 +70,7 @@ const Signup: React.FC = () => {
 
     const debounceTimer = setTimeout(checkUsername, 500)
     return () => clearTimeout(debounceTimer)
-  }, [formData.username, checkUsernameAvailability])
+  }, [username, checkUsernameAvailability])
 
   // Input validation
   const validateInput = (name: string, value: string) => {
@@ -97,24 +88,6 @@ const Signup: React.FC = () => {
       }
     }
     
-    if (name === 'password') {
-      if (!value) {
-        errors.password = 'Password is required'
-      } else if (value.length < 8) {
-        errors.password = 'Password must be at least 8 characters'
-      } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(value)) {
-        errors.password = 'Password must contain at least one uppercase letter, one lowercase letter, and one number'
-      }
-    }
-    
-    if (name === 'confirmPassword') {
-      if (!value) {
-        errors.confirmPassword = 'Please confirm your password'
-      } else if (value !== formData.password) {
-        errors.confirmPassword = 'Passwords do not match'
-      }
-    }
-    
     return errors
   }
 
@@ -125,12 +98,11 @@ const Signup: React.FC = () => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
-    const sanitizedValue = name === 'password' || name === 'confirmPassword' ? value : sanitizeInput(value)
+    const sanitizedValue = sanitizeInput(value)
     
-    setFormData(prev => ({
-      ...prev,
-      [name]: sanitizedValue
-    }))
+    if (name === 'username') {
+      setUsername(sanitizedValue)
+    }
     
     // Clear validation errors for this field
     if (validationErrors[name]) {
@@ -152,14 +124,11 @@ const Signup: React.FC = () => {
     setError('')
     setValidationErrors({})
 
-    // Validate username and password
-    const usernameErrors = validateInput('username', formData.username)
-    const passwordErrors = validateInput('password', formData.password)
-    const confirmPasswordErrors = validateInput('confirmPassword', formData.confirmPassword)
-    const allErrors = { ...usernameErrors, ...passwordErrors, ...confirmPasswordErrors }
+    // Validate username
+    const usernameErrors = validateInput('username', username)
 
-    if (Object.keys(allErrors).length > 0) {
-      setValidationErrors(allErrors)
+    if (Object.keys(usernameErrors).length > 0) {
+      setValidationErrors(usernameErrors)
       return
     }
 
@@ -193,7 +162,7 @@ const Signup: React.FC = () => {
       sessionStorage.clear()
       localStorage.removeItem('learn2go-session')
       
-      const { error } = await signUp(formData.username, country, language)
+      const { error } = await signUp(username, country, language)
       
       if (error) {
         console.error('[SIGNUP] Registration failed:', error)
@@ -209,7 +178,7 @@ const Signup: React.FC = () => {
         sessionStorage.setItem('learn2go-session', sessionToken)
         
         // Check if this is admin user 'Hari'
-        if (formData.username.toLowerCase() === 'hari') {
+        if (username.toLowerCase() === 'hari') {
           navigate('/admin', { replace: true })
         } else {
           navigate('/dashboard', { replace: true })
@@ -223,7 +192,7 @@ const Signup: React.FC = () => {
     }
   }
 
-  const isAdminUser = formData.username.toLowerCase() === 'hari'
+  const isAdminUser = username.toLowerCase() === 'hari'
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 pt-20">
@@ -318,7 +287,7 @@ const Signup: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
           >
-            {step === 1 ? 'Create your secure account' : 'Complete your profile setup'}
+            {step === 1 ? 'Choose your unique username' : 'Complete your profile setup'}
           </motion.p>
         </div>
 
@@ -356,7 +325,7 @@ const Signup: React.FC = () => {
           )}
 
           {step === 1 ? (
-            /* Step 1: Account Creation */
+            /* Step 1: Username Creation */
             <form onSubmit={handleUsernameSubmit} className="space-y-6">
               {/* Admin User Detection */}
               {isAdminUser && (
@@ -389,7 +358,7 @@ const Signup: React.FC = () => {
                     name="username"
                     type="text"
                     required
-                    value={formData.username}
+                    value={username}
                     onChange={handleInputChange}
                     className={`appearance-none relative block w-full pl-10 pr-12 py-3 border ${
                       validationErrors.username ? 'border-red-300' : 'border-gray-300'
@@ -408,7 +377,7 @@ const Signup: React.FC = () => {
                         transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                       />
                     )}
-                    {!isCheckingUsername && usernameStatus.checked && formData.username.length >= 3 && (
+                    {!isCheckingUsername && usernameStatus.checked && username.length >= 3 && (
                       <motion.div
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
@@ -427,17 +396,17 @@ const Signup: React.FC = () => {
                 {/* Character Counter */}
                 <div className="flex justify-between items-center mt-2">
                   <div className="text-xs text-gray-500">
-                    {formData.username.length}/20 characters
+                    {username.length}/20 characters
                   </div>
-                  {formData.username.length > 0 && (
-                    <div className={`text-xs ${formData.username.length <= 20 ? 'text-green-600' : 'text-red-600'}`}>
-                      {formData.username.length <= 20 ? '✓ Valid length' : '✗ Too long'}
+                  {username.length > 0 && (
+                    <div className={`text-xs ${username.length <= 20 ? 'text-green-600' : 'text-red-600'}`}>
+                      {username.length <= 20 ? '✓ Valid length' : '✗ Too long'}
                     </div>
                   )}
                 </div>
                 
                 {/* Status Message */}
-                {usernameStatus.checked && formData.username.length >= 3 && (
+                {usernameStatus.checked && username.length >= 3 && (
                   <motion.div
                     initial={{ opacity: 0, y: -5 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -469,122 +438,32 @@ const Signup: React.FC = () => {
                 )}
               </div>
 
-              {/* Password Field */}
-              <div>
-                <label htmlFor="password" className="block text-sm font-bold text-gray-700 mb-2">
-                  Password <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Lock className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    id="password"
-                    name="password"
-                    type={showPassword ? 'text' : 'password'}
-                    required
-                    value={formData.password}
-                    onChange={handleInputChange}
-                    className={`appearance-none relative block w-full pl-10 pr-12 py-3 border ${
-                      validationErrors.password ? 'border-red-300' : 'border-gray-300'
-                    } placeholder-gray-500 text-gray-900 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:z-10 transition-all duration-200 bg-white/80 backdrop-blur-sm`}
-                    placeholder="Create a strong password"
-                    autoComplete="new-password"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                    ) : (
-                      <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                    )}
-                  </button>
-                </div>
-                {validationErrors.password && (
-                  <motion.p
-                    initial={{ opacity: 0, y: -5 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="mt-2 text-sm text-red-600"
-                  >
-                    {validationErrors.password}
-                  </motion.p>
-                )}
-              </div>
-
-              {/* Confirm Password Field */}
-              <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-bold text-gray-700 mb-2">
-                  Confirm Password <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Lock className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    required
-                    value={formData.confirmPassword}
-                    onChange={handleInputChange}
-                    className={`appearance-none relative block w-full pl-10 pr-12 py-3 border ${
-                      validationErrors.confirmPassword ? 'border-red-300' : 'border-gray-300'
-                    } placeholder-gray-500 text-gray-900 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:z-10 transition-all duration-200 bg-white/80 backdrop-blur-sm`}
-                    placeholder="Confirm your password"
-                    autoComplete="new-password"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  >
-                    {showConfirmPassword ? (
-                      <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                    ) : (
-                      <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                    )}
-                  </button>
-                </div>
-                {validationErrors.confirmPassword && (
-                  <motion.p
-                    initial={{ opacity: 0, y: -5 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="mt-2 text-sm text-red-600"
-                  >
-                    {validationErrors.confirmPassword}
-                  </motion.p>
-                )}
-              </div>
-
-              {/* Password Requirements */}
+              {/* Username Requirements */}
               <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-                <p className="text-xs font-medium text-gray-700 mb-2">Password Requirements:</p>
+                <p className="text-xs font-medium text-gray-700 mb-2">Username Requirements:</p>
                 <ul className="text-xs text-gray-600 space-y-1">
-                  <li className={`flex items-center space-x-1 ${formData.password.length >= 8 ? 'text-green-600' : ''}`}>
-                    <span>{formData.password.length >= 8 ? '✓' : '•'}</span>
-                    <span>At least 8 characters long</span>
+                  <li className={`flex items-center space-x-1 ${username.length >= 3 ? 'text-green-600' : ''}`}>
+                    <span>{username.length >= 3 ? '✓' : '•'}</span>
+                    <span>At least 3 characters long</span>
                   </li>
-                  <li className={`flex items-center space-x-1 ${/(?=.*[a-z])/.test(formData.password) ? 'text-green-600' : ''}`}>
-                    <span>{/(?=.*[a-z])/.test(formData.password) ? '✓' : '•'}</span>
-                    <span>One lowercase letter</span>
+                  <li className={`flex items-center space-x-1 ${username.length <= 20 ? 'text-green-600' : username.length > 0 ? 'text-red-600' : ''}`}>
+                    <span>{username.length <= 20 ? '✓' : username.length > 0 ? '✗' : '•'}</span>
+                    <span>Maximum 20 characters</span>
                   </li>
-                  <li className={`flex items-center space-x-1 ${/(?=.*[A-Z])/.test(formData.password) ? 'text-green-600' : ''}`}>
-                    <span>{/(?=.*[A-Z])/.test(formData.password) ? '✓' : '•'}</span>
-                    <span>One uppercase letter</span>
+                  <li className={`flex items-center space-x-1 ${/^[a-zA-Z0-9_]*$/.test(username) ? 'text-green-600' : username.length > 0 ? 'text-red-600' : ''}`}>
+                    <span>{/^[a-zA-Z0-9_]*$/.test(username) && username.length > 0 ? '✓' : username.length > 0 ? '✗' : '•'}</span>
+                    <span>Only letters, numbers, and underscores</span>
                   </li>
-                  <li className={`flex items-center space-x-1 ${/(?=.*\d)/.test(formData.password) ? 'text-green-600' : ''}`}>
-                    <span>{/(?=.*\d)/.test(formData.password) ? '✓' : '•'}</span>
-                    <span>One number</span>
+                  <li className={`flex items-center space-x-1 ${usernameStatus.available && usernameStatus.checked ? 'text-green-600' : ''}`}>
+                    <span>{usernameStatus.available && usernameStatus.checked ? '✓' : '•'}</span>
+                    <span>Must be unique</span>
                   </li>
                 </ul>
               </div>
 
               <button
                 type="submit"
-                disabled={!usernameStatus.available || !usernameStatus.checked || formData.username.length < 3}
+                disabled={!usernameStatus.available || !usernameStatus.checked || username.length < 3}
                 className="group relative w-full flex justify-center items-center space-x-2 py-3 px-4 border border-transparent text-sm font-bold rounded-2xl text-white bg-gradient-to-r from-blue-500 to-green-600 hover:from-blue-600 hover:to-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-xl hover:shadow-2xl"
               >
                 {isAdminUser && <Crown className="h-4 w-4" />}
@@ -691,7 +570,7 @@ const Signup: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
               <div className="flex items-center space-x-2">
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span>Password encryption</span>
+                <span>Username validation</span>
               </div>
               <div className="flex items-center space-x-2">
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>

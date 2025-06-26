@@ -11,20 +11,14 @@ import {
   Sparkles, 
   Shield, 
   Lock,
-  Eye,
-  EyeOff,
   Home,
   ArrowLeft
 } from 'lucide-react'
 
 const Login: React.FC = () => {
-  const [formData, setFormData] = useState({
-    username: '',
-    password: ''
-  })
+  const [username, setUsername] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
   const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({})
   
   const { signIn, isAuthenticated } = useAuth()
@@ -58,14 +52,6 @@ const Login: React.FC = () => {
       }
     }
     
-    if (name === 'password') {
-      if (!value) {
-        errors.password = 'Password is required'
-      } else if (value.length < 6) {
-        errors.password = 'Password must be at least 6 characters'
-      }
-    }
-    
     return errors
   }
 
@@ -78,10 +64,9 @@ const Login: React.FC = () => {
     const { name, value } = e.target
     const sanitizedValue = sanitizeInput(value)
     
-    setFormData(prev => ({
-      ...prev,
-      [name]: sanitizedValue
-    }))
+    if (name === 'username') {
+      setUsername(sanitizedValue)
+    }
     
     // Clear validation errors for this field
     if (validationErrors[name]) {
@@ -104,13 +89,11 @@ const Login: React.FC = () => {
     setError('')
     setValidationErrors({})
 
-    // Validate all fields
-    const usernameErrors = validateInput('username', formData.username)
-    const passwordErrors = validateInput('password', formData.password)
-    const allErrors = { ...usernameErrors, ...passwordErrors }
+    // Validate username
+    const usernameErrors = validateInput('username', username)
 
-    if (Object.keys(allErrors).length > 0) {
-      setValidationErrors(allErrors)
+    if (Object.keys(usernameErrors).length > 0) {
+      setValidationErrors(usernameErrors)
       setLoading(false)
       return
     }
@@ -122,7 +105,7 @@ const Login: React.FC = () => {
       sessionStorage.clear()
       localStorage.removeItem('learn2go-session')
       
-      const { error } = await signIn(formData.username)
+      const { error } = await signIn(username)
       
       if (error) {
         console.error('[LOGIN] Authentication failed:', error)
@@ -145,7 +128,7 @@ const Login: React.FC = () => {
         sessionStorage.setItem('learn2go-session', sessionToken)
         
         // Check if this is admin user 'Hari'
-        if (formData.username.toLowerCase() === 'hari') {
+        if (username.toLowerCase() === 'hari') {
           navigate('/admin', { replace: true })
         } else {
           navigate(from, { replace: true })
@@ -159,7 +142,7 @@ const Login: React.FC = () => {
     }
   }
 
-  const isAdminUser = formData.username.toLowerCase() === 'hari'
+  const isAdminUser = username.toLowerCase() === 'hari'
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 pt-20">
@@ -246,7 +229,7 @@ const Login: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
           >
-            Secure Login
+            Welcome Back
           </motion.h2>
           <motion.p 
             className="text-gray-600 text-lg"
@@ -254,7 +237,7 @@ const Login: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
           >
-            Welcome back to Learn2Go
+            Enter your username to continue learning
           </motion.p>
         </div>
 
@@ -308,7 +291,7 @@ const Login: React.FC = () => {
                   name="username"
                   type="text"
                   required
-                  value={formData.username}
+                  value={username}
                   onChange={handleInputChange}
                   className={`appearance-none relative block w-full pl-10 pr-4 py-3 border ${
                     validationErrors.username ? 'border-red-300' : 'border-gray-300'
@@ -330,57 +313,11 @@ const Login: React.FC = () => {
               )}
             </div>
 
-            {/* Password Field */}
-            <div>
-              <label htmlFor="password" className="block text-sm font-bold text-gray-700 mb-2">
-                Password <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  id="password"
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  className={`appearance-none relative block w-full pl-10 pr-12 py-3 border ${
-                    validationErrors.password ? 'border-red-300' : 'border-gray-300'
-                  } placeholder-gray-500 text-gray-900 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:z-10 transition-all duration-200 bg-white/80 backdrop-blur-sm`}
-                  placeholder="Enter your password"
-                  disabled={loading}
-                  autoComplete="current-password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                  ) : (
-                    <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                  )}
-                </button>
-              </div>
-              {validationErrors.password && (
-                <motion.p
-                  initial={{ opacity: 0, y: -5 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mt-2 text-sm text-red-600"
-                >
-                  {validationErrors.password}
-                </motion.p>
-              )}
-            </div>
-
             {/* Submit Button */}
             <div>
               <motion.button
                 type="submit"
-                disabled={loading}
+                disabled={loading || !username.trim()}
                 whileHover={{ scale: 1.02, y: -1 }}
                 whileTap={{ scale: 0.98 }}
                 className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-2xl text-white bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-xl hover:shadow-2xl"
@@ -392,13 +329,13 @@ const Login: React.FC = () => {
                       animate={{ rotate: 360 }}
                       transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                     />
-                    <span>Signing in securely...</span>
+                    <span>Signing in...</span>
                   </div>
                 ) : (
                   <div className="flex items-center space-x-2">
                     {isAdminUser && <Crown className="h-4 w-4" />}
                     <Shield className="h-4 w-4" />
-                    <span>{isAdminUser ? 'Admin Login' : 'Secure Login'}</span>
+                    <span>{isAdminUser ? 'Admin Login' : 'Sign In'}</span>
                   </div>
                 )}
               </motion.button>
@@ -426,12 +363,12 @@ const Login: React.FC = () => {
           <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-2xl p-6 text-sm text-gray-600 border border-gray-200 shadow-lg">
             <div className="flex items-center justify-center space-x-2 mb-3">
               <Shield className="h-5 w-5 text-blue-600" />
-              <span className="font-bold text-blue-900">Advanced Security Features</span>
+              <span className="font-bold text-blue-900">Secure Access</span>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
               <div className="flex items-center space-x-2">
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span>Encrypted data transmission</span>
+                <span>Username-based authentication</span>
               </div>
               <div className="flex items-center space-x-2">
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
