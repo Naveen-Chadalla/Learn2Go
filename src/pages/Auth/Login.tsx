@@ -9,14 +9,8 @@ const Login: React.FC = () => {
   const [username, setUsername] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [isCheckingUsername, setIsCheckingUsername] = useState(false)
-  const [usernameStatus, setUsernameStatus] = useState<{
-    available: boolean
-    message: string
-    checked: boolean
-  }>({ available: false, message: '', checked: false })
   
-  const { signIn, isAuthenticated, checkUsernameAvailability } = useAuth()
+  const { signIn, isAuthenticated } = useAuth()
   const { t } = useLanguage()
   const navigate = useNavigate()
   const location = useLocation()
@@ -30,36 +24,6 @@ const Login: React.FC = () => {
       navigate('/dashboard', { replace: true })
     }
   }, [isAuthenticated, navigate])
-
-  // Real-time username availability checking
-  useEffect(() => {
-    const checkUsername = async () => {
-      if (username.length >= 3) {
-        setIsCheckingUsername(true)
-        try {
-          const result = await checkUsernameAvailability(username)
-          setUsernameStatus({
-            available: result.available,
-            message: result.message,
-            checked: true
-          })
-        } catch (error) {
-          setUsernameStatus({
-            available: false,
-            message: 'Error checking username',
-            checked: true
-          })
-        } finally {
-          setIsCheckingUsername(false)
-        }
-      } else {
-        setUsernameStatus({ available: false, message: '', checked: false })
-      }
-    }
-
-    const debounceTimer = setTimeout(checkUsername, 500)
-    return () => clearTimeout(debounceTimer)
-  }, [username, checkUsernameAvailability])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -110,9 +74,24 @@ const Login: React.FC = () => {
         {/* Header */}
         <div className="text-center">
           <div className="flex justify-center mb-6">
-            <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-4 rounded-2xl">
-              <BookOpen className="h-8 w-8 text-white" />
-            </div>
+            <motion.div 
+              className="relative"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <img 
+                src="/src/assets/ChatGPT Image Jun 21, 2025, 03_33_49 PM copy.png" 
+                alt="Learn2Go Logo" 
+                className="h-16 w-auto"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none'
+                  e.currentTarget.nextElementSibling?.classList.remove('hidden')
+                }}
+              />
+              <div className="hidden bg-gradient-to-r from-blue-500 to-purple-600 p-4 rounded-2xl">
+                <BookOpen className="h-8 w-8 text-white" />
+              </div>
+            </motion.div>
           </div>
           <h2 className="text-3xl font-bold text-gray-900 mb-2">
             {t('auth.login')}
@@ -171,36 +150,7 @@ const Login: React.FC = () => {
                   placeholder={t('auth.enterUsername')}
                   disabled={loading}
                 />
-                
-                {/* Username Status Indicator */}
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                  {isCheckingUsername && (
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                  )}
-                  {!isCheckingUsername && usernameStatus.checked && username.length >= 3 && (
-                    <>
-                      {usernameStatus.available ? (
-                        <CheckCircle className="h-5 w-5 text-green-500" />
-                      ) : (
-                        <AlertCircle className="h-5 w-5 text-red-500" />
-                      )}
-                    </>
-                  )}
-                </div>
               </div>
-              
-              {/* Username Status Message */}
-              {usernameStatus.checked && username.length >= 3 && (
-                <motion.p
-                  initial={{ opacity: 0, y: -5 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className={`mt-2 text-sm ${
-                    usernameStatus.available ? 'text-green-600' : 'text-red-600'
-                  }`}
-                >
-                  {usernameStatus.message}
-                </motion.p>
-              )}
             </div>
 
             <div>

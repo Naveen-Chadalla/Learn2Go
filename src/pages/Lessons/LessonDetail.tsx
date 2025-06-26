@@ -23,6 +23,8 @@ import {
 } from 'lucide-react'
 import Confetti from 'react-confetti'
 import DynamicTagline from '../../components/DynamicTagline'
+import VoiceoverPlayer from '../../components/VoiceoverPlayer'
+import InteractiveGame from '../../components/InteractiveGame'
 
 interface QuizQuestion {
   id: string
@@ -98,29 +100,6 @@ const LessonDetail: React.FC = () => {
       trackLessonStart(lesson.id, lesson.title)
     }
   }, [lesson, navigate, user, trackLessonStart])
-
-  // Text-to-speech functionality
-  const speakText = (text: string) => {
-    if ('speechSynthesis' in window) {
-      const utterance = new SpeechSynthesisUtterance(text)
-      utterance.lang = data.userProfile?.language === 'hi' ? 'hi-IN' : 
-                      data.userProfile?.language === 'te' ? 'te-IN' : 'en-US'
-      utterance.rate = 0.8
-      utterance.pitch = 1
-      
-      utterance.onstart = () => setIsReading(true)
-      utterance.onend = () => setIsReading(false)
-      
-      speechSynthesis.speak(utterance)
-    }
-  }
-
-  const stopSpeaking = () => {
-    if ('speechSynthesis' in window) {
-      speechSynthesis.cancel()
-      setIsReading(false)
-    }
-  }
 
   const handleStartQuiz = () => {
     setShowQuiz(true)
@@ -207,7 +186,7 @@ const LessonDetail: React.FC = () => {
     setShowGame(true)
   }
 
-  const handleGameComplete = () => {
+  const handleGameComplete = (score: number) => {
     setShowGame(false)
     setTopicCompleted(true)
   }
@@ -284,28 +263,6 @@ const LessonDetail: React.FC = () => {
                 {t('lessons.level')} {lesson.level}
               </span>
             </div>
-
-            {/* Voice Control */}
-            <button
-              onClick={() => {
-                if (isReading) {
-                  stopSpeaking()
-                } else {
-                  setVoiceEnabled(!voiceEnabled)
-                  if (!voiceEnabled) {
-                    speakText(lesson.title + '. ' + lesson.description)
-                  }
-                }
-              }}
-              className="flex items-center space-x-2 px-3 py-2 bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200"
-            >
-              {isReading ? (
-                <VolumeX className="h-4 w-4 text-red-500" />
-              ) : (
-                <Volume2 className="h-4 w-4 text-blue-500" />
-              )}
-              <span className="text-sm">{isReading ? 'Stop' : 'Listen'}</span>
-            </button>
           </div>
         </motion.div>
 
@@ -378,6 +335,17 @@ const LessonDetail: React.FC = () => {
               </div>
 
               <p className="text-gray-600 mb-8 text-lg">{lesson.description}</p>
+
+              {/* Voiceover Player */}
+              <div className="mb-8">
+                <VoiceoverPlayer
+                  text={`${lesson.title}. ${lesson.description}. ${lesson.content}`}
+                  language={data.userProfile?.language || 'en'}
+                  autoPlay={false}
+                  showControls={true}
+                  naturalTone={true}
+                />
+              </div>
 
               {/* Lesson Images */}
               <div className="grid md:grid-cols-2 gap-6 mb-8">
@@ -652,42 +620,13 @@ const LessonDetail: React.FC = () => {
             transition={{ duration: 0.3 }}
             className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100"
           >
-            <div className="text-center">
-              <div className="text-6xl mb-6">🎮</div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Interactive Traffic Safety Game</h2>
-              <p className="text-gray-600 mb-8">
-                Apply what you've learned in this interactive scenario-based game!
-              </p>
-              
-              {/* Simple game simulation */}
-              <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-xl p-8 mb-6">
-                <h3 className="text-lg font-semibold mb-4">Scenario: You're approaching a traffic light</h3>
-                <div className="text-4xl mb-4">🚦</div>
-                <p className="text-gray-700 mb-6">The light just turned yellow. What should you do?</p>
-                
-                <div className="space-y-3">
-                  <button
-                    onClick={() => {
-                      setTimeout(() => {
-                        alert('Correct! You should prepare to stop safely.')
-                        handleGameComplete()
-                      }, 1000)
-                    }}
-                    className="w-full p-3 bg-green-100 hover:bg-green-200 rounded-lg transition-colors"
-                  >
-                    Prepare to stop safely
-                  </button>
-                  <button
-                    onClick={() => {
-                      alert('Incorrect. Yellow means prepare to stop, not speed up.')
-                    }}
-                    className="w-full p-3 bg-red-100 hover:bg-red-200 rounded-lg transition-colors"
-                  >
-                    Speed up to get through
-                  </button>
-                </div>
-              </div>
-            </div>
+            <InteractiveGame
+              lessonId={lesson.id}
+              country={data.userProfile?.country || 'US'}
+              language={data.userProfile?.language || 'en'}
+              onComplete={handleGameComplete}
+              theme={countryTheme}
+            />
           </motion.div>
         )}
       </div>

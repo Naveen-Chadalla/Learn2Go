@@ -61,7 +61,16 @@ const Navbar: React.FC = () => {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
-              <div className="bg-gradient-to-r from-blue-500 to-green-600 p-2 rounded-xl shadow-lg">
+              <img 
+                src="/src/assets/ChatGPT Image Jun 21, 2025, 03_33_49 PM copy.png" 
+                alt="Learn2Go Logo" 
+                className="h-10 w-auto"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none'
+                  e.currentTarget.nextElementSibling?.classList.remove('hidden')
+                }}
+              />
+              <div className="hidden bg-gradient-to-r from-blue-500 to-green-600 p-2 rounded-xl shadow-lg">
                 <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
                   <div className="w-4 h-4 bg-gradient-to-b from-red-500 via-yellow-500 to-green-500 rounded-full"></div>
                 </div>
