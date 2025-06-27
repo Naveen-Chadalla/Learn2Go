@@ -241,18 +241,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return { available: false, message: 'Username is already registered. Please try signing in instead.' }
         }
 
-        // If there's any other auth error, we cannot confirm availability
-        // Be conservative and assume username might be taken
-        if (authError) {
-          logDebugInfo('Auth availability check returned error, assuming unavailable', authError)
-          return { available: false, message: 'Unable to verify username availability. Please try a different username.' }
-        }
-
+        // Any other auth error (like network issues) should not block availability check
+        // We'll assume the username is available if we can't verify otherwise
       } catch (authCheckError) {
-        // Any exception during auth check means we cannot confirm availability
-        // Be conservative and assume username might be taken
-        logDebugInfo('Auth availability check failed with exception, assuming unavailable', authCheckError)
-        return { available: false, message: 'Unable to verify username availability. Please try a different username.' }
+        // Network or other errors during auth check - don't block availability
+        logDebugInfo('Auth availability check failed, proceeding with availability', authCheckError)
       }
 
       // If both checks pass, username is available
