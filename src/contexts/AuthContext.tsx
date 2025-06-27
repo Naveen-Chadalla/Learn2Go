@@ -53,7 +53,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { error } = await supabase
         .from('users')
         .upsert({
-          username: authUser.user_metadata?.username || authUser.email!.split('@')[0],
+          username: (authUser.user_metadata?.username || authUser.email!.split('@')[0]).toLowerCase(),
           email: authUser.email!,
           country: authUser.user_metadata?.country || 'US',
           language: authUser.user_metadata?.language || 'en',
@@ -69,11 +69,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [logDebugInfo])
 
   const checkUsernameAvailability = useCallback(async (username: string): Promise<{ available: boolean; message: string }> => {
-    if (!username || username.length < 3) {
+    const normalizedUsername = username.toLowerCase()
+    
+    if (!normalizedUsername || normalizedUsername.length < 3) {
       return { available: false, message: 'Username must be at least 3 characters long' }
     }
 
-    if (username.length > 20) {
+    if (normalizedUsername.length > 20) {
       return { available: false, message: 'Username must be less than 20 characters' }
     }
 
@@ -85,7 +87,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { data, error } = await supabase
         .from('users')
         .select('username')
-        .eq('username', username)
+        .eq('username', normalizedUsername)
         .maybeSingle()
 
       // If data exists, username is taken
@@ -217,7 +219,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signIn = async (username: string) => {
     try {
-      logDebugInfo(`Attempting sign in for username: ${username}`)
+      const normalizedUsername = username.toLowerCase()
+      logDebugInfo(`Attempting sign in for username: ${normalizedUsername}`)
       
       // Clear any existing session data
       clearSessionData()
@@ -226,7 +229,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('username, email')
-        .eq('username', username)
+        .eq('username', normalizedUsername)
         .maybeSingle()
 
       if (userError) {
@@ -241,7 +244,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (!userData) {
-        logDebugInfo('User not found in database', { username })
+        logDebugInfo('User not found in database', { username: normalizedUsername })
         return { 
           data: null, 
           error: { 
@@ -251,8 +254,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
       
-      const tempEmail = `${username}@learn2go.local`
-      const tempPassword = `${username}_temp_pass_123`
+      const tempEmail = `${normalizedUsername}@learn2go.local`
+      const tempPassword = `${normalizedUsername}_temp_pass_123`
       
       const { data, error } = await supabase.auth.signInWithPassword({ 
         email: tempEmail, 
@@ -306,7 +309,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (data?.user) {
-        logDebugInfo('Sign in successful', { username })
+        logDebugInfo('Sign in successful', { username: normalizedUsername })
         return { data, error: null }
       }
 
@@ -343,7 +346,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signUp = async (username: string, country: string, language: string) => {
     try {
-      logDebugInfo(`Attempting sign up for username: ${username}`)
+      const normalizedUsername = username.toLowerCase()
+      logDebugInfo(`Attempting sign up for username: ${normalizedUsername}`)
       
       // Clear any existing session data
       clearSessionData()
@@ -353,15 +357,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { data: null, error: { message: availability.message } }
       }
       
-      const tempEmail = `${username}@learn2go.local`
-      const tempPassword = `${username}_temp_pass_123`
+      const tempEmail = `${normalizedUsername}@learn2go.local`
+      const tempPassword = `${normalizedUsername}_temp_pass_123`
       
       const { data, error } = await supabase.auth.signUp({
         email: tempEmail,
         password: tempPassword,
         options: {
           data: {
-            username: username,
+            username: normalizedUsername,
             country: country,
             language: language,
           },
@@ -395,7 +399,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (data.user) {
         logDebugInfo('Creating user profile in database')
         const { error: profileError } = await supabase.from('users').insert({
-          username: username,
+          username: normalizedUsername,
           email: tempEmail,
           country: country,
           language: language,
@@ -406,7 +410,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Don't fail the signup if profile creation fails, but log it
         }
         
-        logDebugInfo('Sign up successful', { username })
+        logDebugInfo('Sign up successful', { username: normalizedUsername })
       }
 
       return { data, error: null }
