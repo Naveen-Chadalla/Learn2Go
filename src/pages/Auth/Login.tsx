@@ -110,13 +110,15 @@ const Login: React.FC = () => {
       if (error) {
         console.error('[LOGIN] Authentication failed:', error)
         
-        // Enhanced error handling
-        if (error.code === 'user_not_found') {
-          setError('User not found. Please check your username or sign up for a new account.')
-        } else if (error.code === 'invalid_credentials') {
-          setError('Invalid credentials. Please check your username and try again.')
+        // Enhanced error handling with updated error codes
+        if (error.code === 'invalid_credentials') {
+          setError('Invalid username or the account may not exist. Please check your username or sign up for a new account.')
         } else if (error.code === 'rate_limit') {
           setError('Too many login attempts. Please wait a few minutes before trying again.')
+        } else if (error.code === 'network_error') {
+          setError('Network error. Please check your connection and try again.')
+        } else if (error.code === 'email_not_confirmed') {
+          setError('Please verify your email address before signing in.')
         } else {
           setError(error.message || 'Login failed. Please try again.')
         }

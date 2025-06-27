@@ -48,6 +48,64 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }))
   }, [])
 
+  const syncUserProfile = useCallback(async (authUser: User) => {
+    try {
+      const username = (authUser.user_metadata?.username || authUser.email!.split('@')[0]).toLowerCase()
+      const email = authUser.email!
+      const country = authUser.user_metadata?.country || 'US'
+      const language = authUser.user_metadata?.language || 'en'
+
+      // Check if user profile exists
+      const { data: existingUser, error: checkError } = await supabase
+        .from('users')
+        .select('username, email')
+        .eq('username', username)
+        .maybeSingle()
+
+      if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is "not found" which is expected
+        logDebugInfo('Error checking existing user profile', checkError)
+        return
+      }
+
+      if (existingUser) {
+        // Update existing profile
+        const { error: updateError } = await supabase
+          .from('users')
+          .update({
+            last_active: new Date().toISOString(),
+            session_start: new Date().toISOString(),
+          })
+          .eq('username', username)
+
+        if (updateError) {
+          logDebugInfo('Error updating user profile', updateError)
+        } else {
+          logDebugInfo('User profile updated successfully')
+        }
+      } else {
+        // Create new profile
+        const { error: insertError } = await supabase
+          .from('users')
+          .insert({
+            username,
+            email,
+            country,
+            language,
+            last_active: new Date().toISOString(),
+            session_start: new Date().toISOString(),
+          })
+
+        if (insertError) {
+          logDebugInfo('Error creating user profile', insertError)
+        } else {
+          logDebugInfo('User profile created successfully')
+        }
+      }
+    } catch (error) {
+      logDebugInfo('Exception during user profile sync', error)
+    }
+  }, [logDebugInfo])
+
   const updateUserActivity = useCallback(async (authUser: User) => {
     try {
       const { error } = await supabase
@@ -191,7 +249,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (event === 'SIGNED_IN' && session?.user) {
         setSession(session)
         setUser(session.user)
-        updateUserActivity(session.user).catch(console.warn)
+        syncUserProfile(session.user).catch(console.warn)
       }
 
       if (event === 'SIGNED_OUT') {
@@ -215,7 +273,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       subscription.unsubscribe()
       logDebugInfo('Auth provider cleanup completed')
     }
-  }, [updateUserActivity, logDebugInfo, clearSessionData])
+  }, [updateUserActivity, logDebugInfo, clearSessionData, syncUserProfile])
 
   const signIn = async (username: string) => {
     try {
@@ -225,38 +283,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Clear any existing session data
       clearSessionData()
       
-      // First, check if the user exists in our database
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('username, email')
-        .eq('username', normalizedUsername)
-        .maybeSingle()
-
-      if (userError) {
-        logDebugInfo('Error checking user existence', userError)
-        return { 
-          data: null, 
-          error: { 
-            message: 'Error checking user account. Please try again.',
-            code: 'database_error'
-          } 
-        }
-      }
-
-      if (!userData) {
-        logDebugInfo('User not found in database', { username: normalizedUsername })
-        return { 
-          data: null, 
-          error: { 
-            message: 'User not found. Please check your username for typos or sign up first.',
-            code: 'user_not_found'
-          } 
-        }
-      }
-      
       const tempEmail = `${normalizedUsername}@learn2go.local`
       const tempPassword = `${normalizedUsername}_temp_pass_123`
       
+      // Attempt authentication with Supabase Auth first
       const { data, error } = await supabase.auth.signInWithPassword({ 
         email: tempEmail, 
         password: tempPassword 
@@ -273,8 +303,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return { 
             data: null, 
             error: { 
-              message: 'Authentication failed. The user account may not be properly set up. Please try signing up again.',
-              code: 'auth_mismatch'
+              message: 'Invalid username or the account may not exist. Please check your username or sign up for a new account.',
+              code: 'invalid_credentials'
             } 
           }
         }
@@ -310,6 +340,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (data?.user) {
         logDebugInfo('Sign in successful', { username: normalizedUsername })
+        
+        // Sync user profile after successful authentication
+        await syncUserProfile(data.user)
+        
         return { data, error: null }
       }
 
