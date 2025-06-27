@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { useLanguage } from '../../contexts/LanguageContext'
@@ -12,13 +12,15 @@ import {
   Shield, 
   Lock,
   Home,
-  ArrowLeft
+  ArrowLeft,
+  CheckCircle
 } from 'lucide-react'
 
 const Login: React.FC = () => {
   const [username, setUsername] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [successMessage, setSuccessMessage] = useState('')
   const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({})
   
   const { signIn, isAuthenticated } = useAuth()
@@ -28,9 +30,24 @@ const Login: React.FC = () => {
   
   // Get the intended destination or default to dashboard
   const from = location.state?.from?.pathname || '/dashboard'
+  
+  // Check for success message from signup
+  useEffect(() => {
+    if (location.state?.message) {
+      setSuccessMessage(location.state.message)
+      
+      // Pre-fill username if provided from signup
+      if (location.state.username) {
+        setUsername(location.state.username)
+      }
+      
+      // Clear location state to prevent message showing on refresh
+      navigate(location.pathname, { replace: true })
+    }
+  }, [location, navigate])
 
   // Redirect if already authenticated
-  React.useEffect(() => {
+  useEffect(() => {
     if (isAuthenticated) {
       navigate('/dashboard', { replace: true })
     }
@@ -77,9 +94,13 @@ const Login: React.FC = () => {
       })
     }
     
-    // Clear general error
+    // Clear general error and success message
     if (error) {
       setError('')
+    }
+    
+    if (successMessage) {
+      setSuccessMessage('')
     }
   }
 
@@ -87,6 +108,7 @@ const Login: React.FC = () => {
     e.preventDefault()
     setLoading(true)
     setError('')
+    setSuccessMessage('')
     setValidationErrors({})
 
     // Validate username
@@ -105,20 +127,24 @@ const Login: React.FC = () => {
       sessionStorage.clear()
       localStorage.removeItem('learn2go-session')
       
-      const { error } = await signIn(username)
+      const { data, error } = await signIn(username)
       
       if (error) {
         console.error('[LOGIN] Authentication failed:', error)
         
         // Enhanced error handling with updated error codes
-        if (error.code === 'invalid_credentials') {
-          setError('Invalid username or the account may not exist. Please check your username or sign up for a new account.')
+        if (error.code === 'username_not_found') {
+          setError('Username not found. Please check your username or sign up for a new account.')
+        } else if (error.code === 'invalid_credentials') {
+          setError('Invalid username or password. Please check your credentials or sign up for a new account.')
         } else if (error.code === 'rate_limit') {
           setError('Too many login attempts. Please wait a few minutes before trying again.')
         } else if (error.code === 'network_error') {
           setError('Network error. Please check your connection and try again.')
         } else if (error.code === 'email_not_confirmed') {
           setError('Please verify your email address before signing in.')
+        } else if (error.code === 'auth_mismatch') {
+          setError('Authentication failed. The user account may not be properly set up. Please try signing up again.')
         } else {
           setError(error.message || 'Login failed. Please try again.')
         }
@@ -262,6 +288,19 @@ const Login: React.FC = () => {
           transition={{ delay: 0.6 }}
         >
           <form className="space-y-6" onSubmit={handleSubmit}>
+            {/* Success Message */}
+            {successMessage && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-2xl flex items-center space-x-2"
+              >
+                <CheckCircle className="h-5 w-5 flex-shrink-0" />
+                <span className="text-sm">{successMessage}</span>
+              </motion.div>
+            )}
+            
+            {/* Error Message */}
             {error && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}

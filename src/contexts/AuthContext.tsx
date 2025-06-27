@@ -400,11 +400,71 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             error.message?.toLowerCase().includes('invalid_credentials') ||
             error.code === 'invalid_credentials' ||
             error.status === 400) {
+          
+          // Try to recreate the user account if credentials are invalid
+          // This can happen if the user exists in our database but not in auth
+          try {
+            logDebugInfo('Attempting to recreate user auth account', { username: normalizedUsername })
+            
+            // Try to sign up the user again with the same credentials
+            const { data: signupData, error: signupError } = await supabase.auth.signUp({
+              email: tempEmail,
+              password: tempPassword,
+              options: {
+                data: {
+                  username: normalizedUsername,
+                  country: existingUser.country || 'US',
+                  language: existingUser.language || 'en',
+                }
+              }
+            })
+            
+            if (signupError) {
+              logDebugInfo('Failed to recreate user auth account', signupError)
+              return { 
+                data: null, 
+                error: { 
+                  message: 'Authentication failed. Please try signing up again with a different username.',
+                  code: 'auth_recreation_failed'
+                } 
+              }
+            }
+            
+            if (signupData?.user) {
+              logDebugInfo('Successfully recreated user auth account', { username: normalizedUsername })
+              
+              // Now try to sign in again
+              const { data: newSignInData, error: newSignInError } = await supabase.auth.signInWithPassword({
+                email: tempEmail,
+                password: tempPassword
+              })
+              
+              if (newSignInError) {
+                logDebugInfo('Failed to sign in after recreation', newSignInError)
+                return { 
+                  data: null, 
+                  error: { 
+                    message: 'Account recreated but login failed. Please try signing in again.',
+                    code: 'auth_recreation_signin_failed'
+                  } 
+                }
+              }
+              
+              if (newSignInData?.user) {
+                logDebugInfo('Sign in successful after account recreation', { username: normalizedUsername })
+                await syncUserProfile(newSignInData.user)
+                return { data: newSignInData, error: null }
+              }
+            }
+          } catch (recreationError) {
+            logDebugInfo('Exception during account recreation', recreationError)
+          }
+          
           return { 
             data: null, 
             error: { 
-              message: 'Authentication failed. There may be an issue with your account. Please try signing up again or contact support.',
-              code: 'auth_mismatch'
+              message: 'Invalid username or password. Please check your credentials or sign up for a new account.',
+              code: 'invalid_credentials'
             } 
           }
         }
@@ -486,14 +546,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Clear any existing session data
       clearSessionData()
       
+      // Check username availability
       const availability = await checkUsernameAvailability(normalizedUsername)
       if (!availability.available) {
+        // If username is taken, check if it's because the user exists in auth system
+        if (availability.message.includes('already registered')) {
+          return { 
+            data: { 
+              user: null, 
+              shouldRedirectToLogin: true 
+            }, 
+            error: { 
+              message: 'This username is already registered. Please try signing in instead.',
+              code: 'user_exists'
+            } 
+          }
+        }
+        
         return { data: null, error: { message: availability.message } }
       }
       
       const tempEmail = `${normalizedUsername}@learn2go.local`
       const tempPassword = `${normalizedUsername}_temp_pass_123`
       
+      // Try to sign up the user
       const { data, error } = await supabase.auth.signUp({
         email: tempEmail,
         password: tempPassword,
@@ -511,9 +587,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         logDebugInfo('Sign up error', error)
         
         // Handle specific signup errors with improved invalid_credentials handling
-        if (error.message?.toLowerCase().includes('user already registered')) {
+        if (error.message?.toLowerCase().includes('user already registered') ||
+            error.code === 'user_already_exists') {
           return { 
-            data: null, 
+            data: { 
+              user: null, 
+              shouldRedirectToLogin: true 
+            }, 
             error: { 
               message: 'This username is already registered. Please try signing in instead.',
               code: 'user_exists'
@@ -526,7 +606,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             error.message?.toLowerCase().includes('invalid_credentials') ||
             error.code === 'invalid_credentials') {
           return { 
-            data: null, 
+            data: { 
+              user: null, 
+              shouldRedirectToLogin: true 
+            }, 
             error: { 
               message: 'This username is already registered. Please try signing in instead.',
               code: 'user_exists'
