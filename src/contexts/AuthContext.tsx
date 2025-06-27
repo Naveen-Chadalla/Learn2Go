@@ -510,8 +510,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) {
         logDebugInfo('Sign up error', error)
         
-        // Handle specific signup errors
+        // Handle specific signup errors with improved invalid_credentials handling
         if (error.message?.toLowerCase().includes('user already registered')) {
+          return { 
+            data: null, 
+            error: { 
+              message: 'This username is already registered. Please try signing in instead.',
+              code: 'user_exists'
+            } 
+          }
+        }
+
+        // Handle invalid_credentials error during signup
+        if (error.message?.toLowerCase().includes('invalid login credentials') ||
+            error.message?.toLowerCase().includes('invalid_credentials') ||
+            error.code === 'invalid_credentials') {
           return { 
             data: null, 
             error: { 
