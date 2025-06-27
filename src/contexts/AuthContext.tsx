@@ -470,33 +470,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
 
-      if (data.user) {
-        logDebugInfo('Creating user profile in database')
-        const { error: profileError } = await supabase.from('users').insert({
-          username: normalizedUsername,
-          email: tempEmail,
-          country: country,
-          language: language,
-        })
-
-        if (profileError) {
-          logDebugInfo('Error creating user profile', profileError)
-          // Don't fail the signup if profile creation fails, but log it
-        }
-        
-        logDebugInfo('Sign up successful', { username: normalizedUsername })
-        
-        // Return success with redirect flag
+      // Critical validation: Ensure user was actually created
+      if (!data.user) {
+        logDebugInfo('Sign up failed: User creation returned null despite no error')
         return { 
-          data: { 
-            ...data, 
-            shouldRedirectToLogin: true 
-          }, 
-          error: null 
+          data: null, 
+          error: { 
+            message: 'Account creation failed unexpectedly. Please try again or contact support if the issue persists.',
+            code: 'user_creation_failed'
+          } 
         }
       }
 
-      return { data, error: null }
+      logDebugInfo('Creating user profile in database')
+      const { error: profileError } = await supabase.from('users').insert({
+        username: normalizedUsername,
+        email: tempEmail,
+        country: country,
+        language: language,
+      })
+
+      if (profileError) {
+        logDebugInfo('Error creating user profile', profileError)
+        // Don't fail the signup if profile creation fails, but log it
+      }
+      
+      logDebugInfo('Sign up successful', { username: normalizedUsername })
+      
+      // Return success with redirect flag
+      return { 
+        data: { 
+          ...data, 
+          shouldRedirectToLogin: true 
+        }, 
+        error: null 
+      }
+
     } catch (error) {
       logDebugInfo('Exception during sign up', error)
       return { 
