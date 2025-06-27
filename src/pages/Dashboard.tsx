@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useLanguage } from '../contexts/LanguageContext'
@@ -21,21 +21,86 @@ import {
   Sparkles,
   Users,
   Calendar,
-  Flame
+  Flame,
+  AlertCircle
 } from 'lucide-react'
 import { getCountryByCode, getLanguageByCode } from '../types/countries'
 import DynamicTagline from '../components/DynamicTagline'
 
 const Dashboard: React.FC = () => {
-  const { user } = useAuth()
+  const { user, isAuthenticated } = useAuth()
   const { t } = useLanguage()
-  const { data, refreshData, loading } = useData()
+  const { data, refreshData, loading, error } = useData()
   const [refreshing, setRefreshing] = useState(false)
+  const [dashboardError, setDashboardError] = useState<string | null>(null)
+
+  // Ensure user is authenticated
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setDashboardError('Please log in to access your dashboard')
+      return
+    }
+
+    if (!user) {
+      setDashboardError('User information not available')
+      return
+    }
+
+    // Clear any previous errors
+    setDashboardError(null)
+  }, [isAuthenticated, user])
 
   const handleRefresh = async () => {
     setRefreshing(true)
-    await refreshData()
-    setRefreshing(false)
+    try {
+      await refreshData()
+    } catch (error) {
+      console.error('Error refreshing data:', error)
+      setDashboardError('Failed to refresh data. Please try again.')
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
+  // Show error state if there's an authentication or data issue
+  if (dashboardError || error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-orange-50 flex items-center justify-center">
+        <div className="max-w-md w-full mx-4 text-center">
+          <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+            <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Dashboard Error</h2>
+            <p className="text-gray-600 mb-6">{dashboardError || error}</p>
+            <div className="space-y-3">
+              <button
+                onClick={handleRefresh}
+                className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-3 rounded-xl hover:from-blue-600 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl"
+              >
+                Try Again
+              </button>
+              <Link
+                to="/login"
+                className="block w-full bg-gray-100 text-gray-700 px-6 py-3 rounded-xl hover:bg-gray-200 transition-all duration-200"
+              >
+                Go to Login
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Show loading state
+  if (loading && !data.userProfile) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading your dashboard...</p>
+        </div>
+      </div>
+    )
   }
 
   const { userProfile, lessons, userProgress, badges, analytics, countryTheme } = data
@@ -110,7 +175,7 @@ const Dashboard: React.FC = () => {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.2 }}
               >
-                {t('dashboard.welcome')}, {user?.user_metadata?.username}! 
+                {t('dashboard.welcome')}, {userProfile?.username || user?.user_metadata?.username || 'User'}! 
                 <motion.span
                   animate={{ rotate: [0, 14, -8, 14, -4, 10, 0] }}
                   transition={{ duration: 2.5, repeat: Infinity, repeatDelay: 3 }}
@@ -331,7 +396,7 @@ const Dashboard: React.FC = () => {
           <div className="flex items-center justify-between mb-8">
             <h2 className="text-3xl font-bold text-gray-900">{t('dashboard.availableLessons')}</h2>
             <div className="flex items-center space-x-2 text-sm text-gray-600">
-              <BarChart3 className="h-5 w-5" />
+              <TrendingUp className="h-5 w-5" />
               <span className="font-semibold">{analytics.completionRate}% completed</span>
             </div>
           </div>

@@ -366,7 +366,7 @@ const Login: React.FC = () => {
           </form>
         </motion.div>
 
-        {/* Security Features - Fixed Alignment */}
+        {/* Security Features */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -379,7 +379,6 @@ const Login: React.FC = () => {
               <span className="font-bold text-blue-900">Secure Access</span>
             </div>
             
-            {/* Improved Grid Layout for Better Alignment */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-6 text-xs mb-4">
               <div className="flex items-center justify-start space-x-2">
                 <div className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0"></div>

@@ -48,12 +48,70 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }))
   }, [])
 
+  // Clear session data completely with user-specific isolation
+  const clearSessionData = useCallback((specificUser?: string) => {
+    if (specificUser) {
+      // Clear only data for specific user
+      const userPrefix = `learn2go-${specificUser}-`
+      const keysToRemove = []
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i)
+        if (key && key.startsWith(userPrefix)) {
+          keysToRemove.push(key)
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key))
+      
+      // Clear session storage for this user
+      const sessionKeys = []
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i)
+        if (key && key.startsWith(userPrefix)) {
+          sessionKeys.push(key)
+        }
+      }
+      sessionKeys.forEach(key => sessionStorage.removeItem(key))
+    } else {
+      // Clear all session data
+      sessionStorage.clear()
+      localStorage.removeItem('learn2go-session')
+      localStorage.removeItem('learn2go-user')
+      
+      // Clear any other app-specific storage
+      const keysToRemove = []
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i)
+        if (key && key.startsWith('learn2go-')) {
+          keysToRemove.push(key)
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key))
+    }
+  }, [])
+
   const syncUserProfile = useCallback(async (authUser: User) => {
     try {
       const username = (authUser.user_metadata?.username || authUser.email!.split('@')[0]).toLowerCase()
       const email = authUser.email!
       const country = authUser.user_metadata?.country || 'US'
       const language = authUser.user_metadata?.language || 'en'
+
+      // Store user-specific session data
+      const userSessionKey = `learn2go-${username}-session`
+      const userDataKey = `learn2go-${username}-data`
+      
+      sessionStorage.setItem(userSessionKey, JSON.stringify({
+        username,
+        email,
+        timestamp: Date.now()
+      }))
+      
+      localStorage.setItem(userDataKey, JSON.stringify({
+        username,
+        country,
+        language,
+        lastLogin: new Date().toISOString()
+      }))
 
       // Check if user profile exists
       const { data: existingUser, error: checkError } = await supabase
@@ -108,10 +166,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateUserActivity = useCallback(async (authUser: User) => {
     try {
+      const username = (authUser.user_metadata?.username || authUser.email!.split('@')[0]).toLowerCase()
+      
       const { error } = await supabase
         .from('users')
         .upsert({
-          username: (authUser.user_metadata?.username || authUser.email!.split('@')[0]).toLowerCase(),
+          username,
           email: authUser.email!,
           country: authUser.user_metadata?.country || 'US',
           language: authUser.user_metadata?.language || 'en',
@@ -127,7 +187,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [logDebugInfo])
 
   const checkUsernameAvailability = useCallback(async (username: string): Promise<{ available: boolean; message: string }> => {
-    const normalizedUsername = username.toLowerCase()
+    const normalizedUsername = username.toLowerCase().trim()
     
     if (!normalizedUsername || normalizedUsername.length < 3) {
       return { available: false, message: 'Username must be at least 3 characters long' }
@@ -137,7 +197,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { available: false, message: 'Username must be less than 20 characters' }
     }
 
-    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+    if (!/^[a-zA-Z0-9_]+$/.test(normalizedUsername)) {
       return { available: false, message: 'Username can only contain letters, numbers, and underscores' }
     }
 
@@ -167,23 +227,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [logDebugInfo])
 
-  // Clear session data completely
-  const clearSessionData = useCallback(() => {
-    sessionStorage.clear()
-    localStorage.removeItem('learn2go-session')
-    localStorage.removeItem('learn2go-user')
-    
-    // Clear any other app-specific storage
-    const keysToRemove = []
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i)
-      if (key && key.startsWith('learn2go-')) {
-        keysToRemove.push(key)
-      }
-    }
-    keysToRemove.forEach(key => localStorage.removeItem(key))
-  }, [])
-
   // Initialize auth state
   useEffect(() => {
     let mounted = true
@@ -191,9 +234,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const initializeAuth = async () => {
       try {
         logDebugInfo('Starting auth initialization')
-        
-        // Clear any existing session data on initialization
-        clearSessionData()
         
         const { data: { session }, error } = await supabase.auth.getSession()
         
@@ -208,7 +248,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           logDebugInfo('Session found', { username: session.user.user_metadata?.username })
           setSession(session)
           setUser(session.user)
-          updateUserActivity(session.user).catch(console.warn)
+          syncUserProfile(session.user).catch(console.warn)
         } else {
           logDebugInfo('No session found')
           setSession(null)
@@ -273,11 +313,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       subscription.unsubscribe()
       logDebugInfo('Auth provider cleanup completed')
     }
-  }, [updateUserActivity, logDebugInfo, clearSessionData, syncUserProfile])
+  }, [logDebugInfo, clearSessionData, syncUserProfile])
 
   const signIn = async (username: string) => {
     try {
-      const normalizedUsername = username.toLowerCase()
+      const normalizedUsername = username.toLowerCase().trim()
       logDebugInfo(`Attempting sign in for username: ${normalizedUsername}`)
       
       // Clear any existing session data
@@ -295,7 +335,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) {
         logDebugInfo('Sign in error', error)
         
-        // Enhanced error handling
+        // Enhanced error handling with updated error codes
         if (error.message?.toLowerCase().includes('invalid login credentials') ||
             error.message?.toLowerCase().includes('invalid_credentials') ||
             error.code === 'invalid_credentials' ||
@@ -380,13 +420,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signUp = async (username: string, country: string, language: string) => {
     try {
-      const normalizedUsername = username.toLowerCase()
+      const normalizedUsername = username.toLowerCase().trim()
       logDebugInfo(`Attempting sign up for username: ${normalizedUsername}`)
       
       // Clear any existing session data
       clearSessionData()
       
-      const availability = await checkUsernameAvailability(username)
+      const availability = await checkUsernameAvailability(normalizedUsername)
       if (!availability.available) {
         return { data: null, error: { message: availability.message } }
       }
@@ -445,6 +485,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         
         logDebugInfo('Sign up successful', { username: normalizedUsername })
+        
+        // Return success with redirect flag
+        return { 
+          data: { 
+            ...data, 
+            shouldRedirectToLogin: true 
+          }, 
+          error: null 
+        }
       }
 
       return { data, error: null }
@@ -464,12 +513,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       logDebugInfo('Starting secure logout')
       
+      const currentUsername = user?.user_metadata?.username || user?.email?.split('@')[0]
+      
       // Clear state immediately
       setSession(null)
       setUser(null)
       
-      // Clear all session data
-      clearSessionData()
+      // Clear user-specific session data
+      if (currentUsername) {
+        clearSessionData(currentUsername)
+      } else {
+        clearSessionData()
+      }
       
       // Background cleanup (non-blocking)
       supabase.auth.signOut().catch(console.warn)

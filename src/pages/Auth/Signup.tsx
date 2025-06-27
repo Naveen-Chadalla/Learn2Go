@@ -12,7 +12,8 @@ import {
   CheckCircle, 
   Crown, 
   Shield,
-  Home
+  Home,
+  X
 } from 'lucide-react'
 import CountryLanguageSelector from '../../components/CountryLanguageSelector'
 
@@ -42,7 +43,7 @@ const Signup: React.FC = () => {
     }
   }, [isAuthenticated, navigate])
 
-  // Username availability checking (debounced)
+  // Live username availability checking (debounced)
   useEffect(() => {
     const checkUsername = async () => {
       if (username.length >= 3) {
@@ -162,7 +163,7 @@ const Signup: React.FC = () => {
       sessionStorage.clear()
       localStorage.removeItem('learn2go-session')
       
-      const { error } = await signUp(username, country, language)
+      const { data, error } = await signUp(username, country, language)
       
       if (error) {
         console.error('[SIGNUP] Registration failed:', error)
@@ -173,15 +174,27 @@ const Signup: React.FC = () => {
         // Set the app language to user's selection
         setAppLanguage(language)
         
-        // Generate new session token
-        const sessionToken = `session_${Date.now()}_${Math.random().toString(36).substr(2, 12)}`
-        sessionStorage.setItem('learn2go-session', sessionToken)
-        
-        // Check if this is admin user 'Hari'
-        if (username.toLowerCase() === 'hari') {
-          navigate('/admin', { replace: true })
+        // Check if we should redirect to login
+        if (data?.shouldRedirectToLogin) {
+          // Show success message and redirect to login
+          navigate('/login', { 
+            replace: true,
+            state: { 
+              message: 'Account created successfully! Please sign in with your username.',
+              username: username
+            }
+          })
         } else {
-          navigate('/dashboard', { replace: true })
+          // Generate new session token for immediate login
+          const sessionToken = `session_${Date.now()}_${Math.random().toString(36).substr(2, 12)}`
+          sessionStorage.setItem('learn2go-session', sessionToken)
+          
+          // Check if this is admin user 'Hari'
+          if (username.toLowerCase() === 'hari') {
+            navigate('/admin', { replace: true })
+          } else {
+            navigate('/dashboard', { replace: true })
+          }
         }
       }
     } catch (error) {
@@ -278,12 +291,13 @@ const Signup: React.FC = () => {
                 <Shield className="h-8 w-8 text-white" />
               </motion.div>
               <motion.div
-                className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full"
+                className="absolute -top-2 -right-2 w-6 h-6 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full"
                 animate={{ scale: [1, 1.2, 1] }}
                 transition={{ duration: 2, repeat: Infinity }}
               />
             </div>
           </motion.div>
+          
           <motion.h2 
             className="text-4xl font-bold text-gray-900 mb-2"
             initial={{ opacity: 0, y: 20 }}
@@ -292,6 +306,7 @@ const Signup: React.FC = () => {
           >
             Join Learn2Go
           </motion.h2>
+          
           <motion.p 
             className="text-gray-600 text-lg"
             initial={{ opacity: 0, y: 20 }}
@@ -372,18 +387,21 @@ const Signup: React.FC = () => {
                     value={username}
                     onChange={handleInputChange}
                     className={`appearance-none relative block w-full pl-10 pr-12 py-3 border ${
-                      validationErrors.username ? 'border-red-300' : 'border-gray-300'
+                      validationErrors.username ? 'border-red-300' : 
+                      usernameStatus.checked && usernameStatus.available ? 'border-green-300' :
+                      usernameStatus.checked && !usernameStatus.available ? 'border-red-300' :
+                      'border-gray-300'
                     } placeholder-gray-500 text-gray-900 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:z-10 transition-all duration-200 bg-white/80 backdrop-blur-sm`}
                     placeholder="Choose a unique username"
                     maxLength={20}
                     autoComplete="username"
                   />
                   
-                  {/* Status Indicator */}
+                  {/* Live Status Indicator */}
                   <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
                     {isCheckingUsername && (
                       <motion.div 
-                        className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full"
+                        className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full"
                         animate={{ rotate: 360 }}
                         transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                       />
@@ -395,9 +413,9 @@ const Signup: React.FC = () => {
                         transition={{ type: "spring", stiffness: 500, damping: 30 }}
                       >
                         {usernameStatus.available ? (
-                          <CheckCircle className="h-5 w-5 text-green-500" />
+                          <CheckCircle className="h-6 w-6 text-green-500" />
                         ) : (
-                          <AlertCircle className="h-5 w-5 text-red-500" />
+                          <X className="h-6 w-6 text-red-500" />
                         )}
                       </motion.div>
                     )}
@@ -416,7 +434,7 @@ const Signup: React.FC = () => {
                   )}
                 </div>
                 
-                {/* Status Message */}
+                {/* Live Status Message */}
                 {usernameStatus.checked && username.length >= 3 && (
                   <motion.div
                     initial={{ opacity: 0, y: -5 }}
@@ -431,7 +449,7 @@ const Signup: React.FC = () => {
                       {usernameStatus.available ? (
                         <CheckCircle className="h-4 w-4" />
                       ) : (
-                        <AlertCircle className="h-4 w-4" />
+                        <X className="h-4 w-4" />
                       )}
                       <span className="text-sm font-medium">{usernameStatus.message}</span>
                     </div>
