@@ -202,6 +202,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
+      // Check if username exists in public.users table
       const { data, error } = await supabase
         .from('users')
         .select('username')
@@ -214,12 +215,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       // If there's an error, it's a real failure
-      if (error) {
+      if (error && error.code !== 'PGRST116') {
         logDebugInfo('Username availability check failed', error)
         return { available: false, message: 'Error checking username availability' }
       }
 
-      // If both data and error are null, username is available
+      // Check if the derived email already exists in Supabase auth.users
+      // We do this by attempting a "dry run" sign-in with a dummy password
+      const tempEmail = `${normalizedUsername}@learn2go.local`
+      const dummyPassword = 'dummy_password_for_check'
+      
+      try {
+        const { error: authError } = await supabase.auth.signInWithPassword({
+          email: tempEmail,
+          password: dummyPassword
+        })
+
+        // If we get invalid_credentials error, it means the email exists but password is wrong
+        // This indicates the username is already taken in the auth system
+        if (authError && (
+          authError.message?.toLowerCase().includes('invalid login credentials') ||
+          authError.message?.toLowerCase().includes('invalid_credentials') ||
+          authError.code === 'invalid_credentials'
+        )) {
+          return { available: false, message: 'Username is already registered. Please try signing in instead.' }
+        }
+
+        // Any other auth error (like network issues) should not block availability check
+        // We'll assume the username is available if we can't verify otherwise
+      } catch (authCheckError) {
+        // Network or other errors during auth check - don't block availability
+        logDebugInfo('Auth availability check failed, proceeding with availability', authCheckError)
+      }
+
+      // If both checks pass, username is available
       return { available: true, message: 'Username is available!' }
     } catch (error) {
       logDebugInfo('Username availability check failed', error)
@@ -323,10 +352,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Clear any existing session data
       clearSessionData()
       
+      // First, check if the username exists in our users table
+      const { data: existingUser, error: userCheckError } = await supabase
+        .from('users')
+        .select('username, email')
+        .eq('username', normalizedUsername)
+        .maybeSingle()
+
+      if (userCheckError && userCheckError.code !== 'PGRST116') {
+        logDebugInfo('Error checking user existence', userCheckError)
+        return { 
+          data: null, 
+          error: { 
+            message: 'Error checking user account. Please try again.',
+            code: 'user_check_error'
+          } 
+        }
+      }
+
+      // If user doesn't exist in our users table, provide specific guidance
+      if (!existingUser) {
+        logDebugInfo(`Username ${normalizedUsername} not found in users table`)
+        return { 
+          data: null, 
+          error: { 
+            message: 'Username not found. Please check your username or sign up for a new account.',
+            code: 'username_not_found'
+          } 
+        }
+      }
+
+      // User exists, proceed with authentication
       const tempEmail = `${normalizedUsername}@learn2go.local`
       const tempPassword = `${normalizedUsername}_temp_pass_123`
       
-      // Attempt authentication with Supabase Auth first
+      // Attempt authentication with Supabase Auth
       const { data, error } = await supabase.auth.signInWithPassword({ 
         email: tempEmail, 
         password: tempPassword 
@@ -343,8 +403,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return { 
             data: null, 
             error: { 
-              message: 'Invalid username or the account may not exist. Please check your username or sign up for a new account.',
-              code: 'invalid_credentials'
+              message: 'Authentication failed. There may be an issue with your account. Please try signing up again or contact support.',
+              code: 'auth_mismatch'
             } 
           }
         }
