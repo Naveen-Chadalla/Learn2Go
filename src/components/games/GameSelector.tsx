@@ -1,10 +1,11 @@
 import React, { useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import TrafficLightGame from './TrafficLightGame'
 import PedestrianCrossingGame from './PedestrianCrossingGame'
 import ParkingGame from './ParkingGame'
 import SpeedLimitGame from './SpeedLimitGame'
-import { Play, Info, X } from 'lucide-react'
+import GameInstructions from './GameInstructions'
+import { Play, Info, X, HelpCircle, Gamepad2 } from 'lucide-react'
 
 interface GameSelectorProps {
   lessonId: string
@@ -28,6 +29,7 @@ const GameSelector: React.FC<GameSelectorProps> = ({
 }) => {
   const [selectedGame, setSelectedGame] = useState<string | null>(null)
   const [showInstructions, setShowInstructions] = useState(true)
+  const [showDetailedInstructions, setShowDetailedInstructions] = useState(false)
 
   // Determine which game to show based on lesson content
   const getGameType = () => {
@@ -137,7 +139,29 @@ const GameSelector: React.FC<GameSelectorProps> = ({
   }
 
   if (!showInstructions && selectedGame) {
-    return renderGame()
+    return (
+      <>
+        {renderGame()}
+        <div className="mt-4 text-center">
+          <button
+            onClick={() => setShowDetailedInstructions(true)}
+            className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-xl hover:bg-blue-200 transition-colors"
+          >
+            <HelpCircle className="h-4 w-4" />
+            <span>Need help? View game instructions</span>
+          </button>
+        </div>
+        
+        <AnimatePresence>
+          {showDetailedInstructions && (
+            <GameInstructions 
+              gameType={selectedGame as any} 
+              onClose={() => setShowDetailedInstructions(false)} 
+            />
+          )}
+        </AnimatePresence>
+      </>
+    )
   }
 
   return (
@@ -156,7 +180,10 @@ const GameSelector: React.FC<GameSelectorProps> = ({
       
       <div className="bg-blue-50 rounded-2xl p-6 mb-6 border border-blue-200">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-bold text-blue-900">How to Play:</h3>
+          <h3 className="font-bold text-blue-900 flex items-center">
+            <Gamepad2 className="h-5 w-5 mr-2 text-blue-600" />
+            How to Play:
+          </h3>
           <Info className="h-5 w-5 text-blue-600" />
         </div>
         <ul className="text-blue-800 text-left space-y-2">
@@ -182,6 +209,7 @@ const GameSelector: React.FC<GameSelectorProps> = ({
       
       <p className="mt-4 text-sm text-gray-500">
         This game is designed to reinforce the concepts from the lesson you just completed.
+        Use keyboard controls to interact with the game.
       </p>
     </div>
   )
