@@ -237,6 +237,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           completed,
           score,
           completed_at: new Date().toISOString()
+        }, {
+          onConflict: 'username,lesson_id'
         })
 
       if (error) throw error
