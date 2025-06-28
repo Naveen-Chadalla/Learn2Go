@@ -1,22 +1,23 @@
-import React, { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import TrafficLightGame from './TrafficLightGame'
-import PedestrianCrossingGame from './PedestrianCrossingGame'
-import ParkingGame from './ParkingGame'
-import SpeedLimitGame from './SpeedLimitGame'
-import EmergencyResponseGame from './EmergencyResponseGame'
-import { Play, HelpCircle, AlertTriangle, Gamepad, Keyboard, Smartphone, Info } from 'lucide-react'
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import TrafficLightGame from './TrafficLightGame';
+import PedestrianCrossingGame from './PedestrianCrossingGame';
+import ParkingGame from './ParkingGame';
+import SpeedLimitGame from './SpeedLimitGame';
+import EmergencyResponseGame from './EmergencyResponseGame';
+import TrafficSafetyGame from './TrafficSafetyGame';
+import { Play, HelpCircle, AlertTriangle, Gamepad, Keyboard, Smartphone, Info, Settings } from 'lucide-react';
 
 interface GameSelectorProps {
-  lessonId: string
-  lessonTitle: string
-  country: string
-  language: string
-  onComplete: (score: number) => void
+  lessonId: string;
+  lessonTitle: string;
+  country: string;
+  language: string;
+  onComplete: (score: number) => void;
   theme: {
-    primaryColor: string
-    secondaryColor: string
-  }
+    primaryColor: string;
+    secondaryColor: string;
+  };
 }
 
 const GameSelector: React.FC<GameSelectorProps> = ({
@@ -27,61 +28,63 @@ const GameSelector: React.FC<GameSelectorProps> = ({
   onComplete,
   theme
 }) => {
-  const [selectedGame, setSelectedGame] = useState<string | null>(null)
-  const [showInstructions, setShowInstructions] = useState(true)
-  const [showHelp, setShowHelp] = useState(false)
-  const [isMobile, setIsMobile] = useState(false)
+  const [selectedGame, setSelectedGame] = useState<string | null>(null);
+  const [showInstructions, setShowInstructions] = useState(true);
+  const [showHelp, setShowHelp] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [gameMode, setGameMode] = useState<'classic' | 'modern'>('modern');
 
   // Check if user is on mobile device
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent))
-    }
+      setIsMobile(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
+    };
     
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
     
     return () => {
-      window.removeEventListener('resize', checkMobile)
-    }
-  }, [])
+      window.removeEventListener('resize', checkMobile);
+    };
+  }, []);
 
   // Determine which game to show based on lesson content
   const getGameType = () => {
-    const title = lessonTitle.toLowerCase()
-    const id = lessonId.toLowerCase()
+    const title = lessonTitle.toLowerCase();
+    const id = lessonId.toLowerCase();
     
     if (title.includes('traffic light') || title.includes('signal') || id.includes('signal') || title.includes('intersection')) {
-      return 'traffic-light'
+      return 'traffic-light';
     }
     
     if (title.includes('pedestrian') || title.includes('crosswalk') || id.includes('cross') || title.includes('crossing')) {
-      return 'pedestrian'
+      return 'pedestrian';
     }
     
     if (title.includes('parking') || title.includes('park') || id.includes('park')) {
-      return 'parking'
+      return 'parking';
     }
     
     if (title.includes('speed') || title.includes('limit') || id.includes('speed') || title.includes('highway')) {
-      return 'speed-limit'
+      return 'speed-limit';
     }
     
     if (title.includes('emergency') || title.includes('accident') || id.includes('emergency')) {
-      return 'emergency'
+      return 'emergency';
     }
     
     // Default game based on country or general traffic safety
     if (country === 'IN') {
-      return 'traffic-light'
+      return 'traffic-light';
     } else if (country === 'US') {
-      return 'speed-limit'
+      return 'speed-limit';
     } else {
-      return 'pedestrian'
+      return 'pedestrian';
     }
-  }
+  };
 
-  const gameType = getGameType()
+  const gameType = getGameType();
 
   const gameOptions = [
     {
@@ -166,34 +169,43 @@ const GameSelector: React.FC<GameSelectorProps> = ({
         'Swipe between scenarios'
       ]
     }
-  ]
+  ];
 
-  const currentGame = gameOptions.find(game => game.id === gameType)
+  const currentGame = gameOptions.find(game => game.id === gameType);
 
   const handleStartGame = () => {
-    setShowInstructions(false)
-    setSelectedGame(gameType)
-  }
+    setShowInstructions(false);
+    setSelectedGame(gameType);
+  };
 
   const renderGame = () => {
+    if (gameMode === 'modern') {
+      return <TrafficSafetyGame 
+        topic={lessonTitle} 
+        onComplete={onComplete} 
+        theme={theme} 
+        language={language}
+      />;
+    }
+    
     switch (selectedGame) {
       case 'traffic-light':
-        return <TrafficLightGame onComplete={onComplete} theme={theme} />
+        return <TrafficLightGame onComplete={onComplete} theme={theme} />;
       case 'pedestrian':
-        return <PedestrianCrossingGame onComplete={onComplete} theme={theme} />
+        return <PedestrianCrossingGame onComplete={onComplete} theme={theme} />;
       case 'parking':
-        return <ParkingGame onComplete={onComplete} theme={theme} />
+        return <ParkingGame onComplete={onComplete} theme={theme} />;
       case 'speed-limit':
-        return <SpeedLimitGame onComplete={onComplete} theme={theme} />
+        return <SpeedLimitGame onComplete={onComplete} theme={theme} />;
       case 'emergency':
-        return <EmergencyResponseGame onComplete={onComplete} theme={theme} />
+        return <EmergencyResponseGame onComplete={onComplete} theme={theme} />;
       default:
-        return null
+        return null;
     }
-  }
+  };
 
-  if (!showInstructions && selectedGame) {
-    return renderGame()
+  if (!showInstructions && (selectedGame || gameMode === 'modern')) {
+    return renderGame();
   }
 
   return (
@@ -205,7 +217,7 @@ const GameSelector: React.FC<GameSelectorProps> = ({
       >
         {currentGame?.icon || '🎮'}
       </motion.div>
-      <h2 className="text-3xl font-bold text-gray-900 mb-4">{currentGame?.name || 'Interactive Game'}</h2>
+      <h2 className="text-3xl font-bold text-gray-900 mb-4">{currentGame?.name || 'Traffic Safety Game'}</h2>
       <p className="text-gray-600 mb-6 text-lg leading-relaxed">
         {currentGame?.description || 'Apply what you\'ve learned in this engaging traffic safety game!'}
       </p>
@@ -216,13 +228,61 @@ const GameSelector: React.FC<GameSelectorProps> = ({
             <Gamepad className="h-5 w-5 text-blue-600" />
             <h3 className="font-bold text-blue-900">How to Play:</h3>
           </div>
-          <button 
-            onClick={() => setShowHelp(!showHelp)}
-            className="text-blue-600 hover:text-blue-800 transition-colors"
-          >
-            <HelpCircle className="h-5 w-5" />
-          </button>
+          <div className="flex items-center space-x-2">
+            <button 
+              onClick={() => setShowSettings(!showSettings)}
+              className="text-blue-600 hover:text-blue-800 transition-colors"
+            >
+              <Settings className="h-5 w-5" />
+            </button>
+            <button 
+              onClick={() => setShowHelp(!showHelp)}
+              className="text-blue-600 hover:text-blue-800 transition-colors"
+            >
+              <HelpCircle className="h-5 w-5" />
+            </button>
+          </div>
         </div>
+        
+        {showSettings && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="mb-4 p-3 bg-white/50 rounded-xl"
+          >
+            <h4 className="font-medium text-blue-800 mb-2">Game Settings</h4>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-blue-700">Game Mode:</span>
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => setGameMode('modern')}
+                  className={`px-3 py-1 text-xs rounded-lg ${
+                    gameMode === 'modern' 
+                      ? 'bg-blue-600 text-white' 
+                      : 'bg-gray-100 text-gray-700'
+                  }`}
+                >
+                  Modern
+                </button>
+                <button
+                  onClick={() => setGameMode('classic')}
+                  className={`px-3 py-1 text-xs rounded-lg ${
+                    gameMode === 'classic' 
+                      ? 'bg-blue-600 text-white' 
+                      : 'bg-gray-100 text-gray-700'
+                  }`}
+                >
+                  Classic
+                </button>
+              </div>
+            </div>
+            <div className="mt-2 text-xs text-blue-600">
+              Modern: Enhanced 2D game with improved graphics and controls<br/>
+              Classic: Original game style with simpler mechanics
+            </div>
+          </motion.div>
+        )}
         
         <div className="mb-4">
           <div className="flex items-center space-x-2 mb-2">
@@ -238,7 +298,7 @@ const GameSelector: React.FC<GameSelectorProps> = ({
           </ul>
         </div>
         
-        {currentGame?.mobileControls && (
+        {currentGame?.mobileControls && isMobile && (
           <div className="mb-4">
             <div className="flex items-center space-x-2 mb-2">
               <Smartphone className="h-4 w-4 text-blue-600" />
@@ -259,7 +319,7 @@ const GameSelector: React.FC<GameSelectorProps> = ({
             <div className="flex items-start space-x-2">
               <AlertTriangle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
               <p className="text-yellow-700 text-sm">
-                This game works best with a keyboard. Some features may be limited on mobile devices.
+                This game works best with a keyboard. Touch controls are provided but may be less precise.
               </p>
             </div>
           </div>
@@ -283,6 +343,7 @@ const GameSelector: React.FC<GameSelectorProps> = ({
                   <li>Focus on safety principles rather than just scoring points</li>
                   <li>If you're struggling, try slowing down and observing patterns</li>
                   <li>You can retry the game as many times as needed</li>
+                  <li>The game adapts to your device - desktop or mobile</li>
                 </ul>
               </div>
             </div>
@@ -305,7 +366,7 @@ const GameSelector: React.FC<GameSelectorProps> = ({
         This game is designed to reinforce the concepts from "{lessonTitle}" that you just completed.
       </p>
     </div>
-  )
-}
+  );
+};
 
-export default GameSelector
+export default GameSelector;
