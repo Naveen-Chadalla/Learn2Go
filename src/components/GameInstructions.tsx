@@ -439,55 +439,56 @@ const GameInstructions: React.FC<GameInstructionsProps> = ({
   }
 
   return (
-    <div className="space-y-6">
-      <div className="text-center">
-        <motion.div
-          animate={{ scale: [1, 1.1, 1] }}
-          transition={{ duration: 2, repeat: Infinity }}
-          className="text-6xl mb-4"
-        >
-          🎮
-        </motion.div>
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">Interactive Traffic Safety Game</h2>
-        <p className="text-gray-600 mb-6">
-          Apply what you've learned in this engaging interactive game!
-        </p>
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        {games.map(game => (
-          <motion.button
-            key={game.id}
-            onClick={() => setSelectedGame(game.id)}
-            whileHover={{ scale: 1.05, y: -2 }}
-            whileTap={{ scale: 0.95 }}
-            className={`p-4 rounded-xl transition-all duration-200 ${
-              selectedGame === game.id
-                ? `bg-gradient-to-r ${game.color} text-white shadow-lg`
-                : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
-            }`}
-          >
-            <div className="flex flex-col items-center text-center">
-              <span className="text-2xl mb-2">{game.emoji}</span>
-              <span className="text-sm font-medium">{game.name}</span>
-            </div>
-          </motion.button>
-        ))}
-      </div>
-
-      {renderGameInstructions()}
-
-      <motion.button
-        onClick={onClose}
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        className="w-full text-white px-8 py-3 rounded-2xl transition-all duration-200 shadow-xl hover:shadow-2xl flex items-center justify-center space-x-2 font-bold"
-        style={{ background: `linear-gradient(135deg, ${theme.primaryColor}, ${theme.secondaryColor})` }}
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.9, y: 20 }}
+        className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
       >
-        <span>Start Playing</span>
-        <ArrowRight className="h-5 w-5" />
-      </motion.button>
-    </div>
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-gray-900">Game Instructions</h2>
+            <motion.button
+              onClick={onClose}
+              whileHover={{ scale: 1.1, rotate: 90 }}
+              whileTap={{ scale: 0.9 }}
+              className="p-2 hover:bg-gray-100 rounded-2xl transition-colors"
+            >
+              <X className="h-6 w-6 text-gray-500" />
+            </motion.button>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+            {games.map(game => (
+              <motion.button
+                key={game.id}
+                onClick={() => setSelectedGame(game.id)}
+                whileHover={{ scale: 1.05, y: -2 }}
+                whileTap={{ scale: 0.95 }}
+                className={`p-4 rounded-xl transition-all duration-200 ${
+                  selectedGame === game.id
+                    ? `bg-gradient-to-r ${game.color} text-white shadow-lg`
+                    : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
+                }`}
+              >
+                <div className="flex flex-col items-center text-center">
+                  <span className="text-2xl mb-2">{game.emoji}</span>
+                  <span className="text-sm font-medium">{game.name}</span>
+                </div>
+              </motion.button>
+            ))}
+          </div>
+
+          {renderGameInstructions()}
+        </div>
+      </motion.div>
+    </motion.div>
   )
 }
 
