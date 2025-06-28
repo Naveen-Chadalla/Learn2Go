@@ -31,6 +31,23 @@ const InteractiveGame: React.FC<InteractiveGameProps> = ({
       'speed-limits': 'Speed Limits and Highway Safety'
     }
     
+    // Check if the lessonId contains any of our keywords
+    if (lessonId.includes('traffic') || lessonId.includes('signal')) {
+      return 'Traffic Signals and Lights'
+    }
+    
+    if (lessonId.includes('pedestrian') || lessonId.includes('cross')) {
+      return 'Pedestrian Safety and Crosswalks'
+    }
+    
+    if (lessonId.includes('park')) {
+      return 'Parking Rules and Techniques'
+    }
+    
+    if (lessonId.includes('speed') || lessonId.includes('highway')) {
+      return 'Speed Limits and Highway Safety'
+    }
+    
     return lessonTitles[lessonId] || 'Traffic Safety'
   }
 
