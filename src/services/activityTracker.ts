@@ -46,7 +46,7 @@ export class ActivityTracker {
       await this.logActivity('session_start', {
         session_id: this.sessionId,
         timestamp: new Date().toISOString()
-      })
+      }).catch(err => console.warn('Failed to log session start:', err))
     } else {
       console.log('Starting tracking in offline mode - will resume when online')
     }
@@ -64,7 +64,7 @@ export class ActivityTracker {
       await this.logActivity('session_end', {
         session_id: this.sessionId,
         timestamp: new Date().toISOString()
-      })
+      }).catch(err => console.warn('Failed to log session end:', err))
     }
   }
 
@@ -75,7 +75,7 @@ export class ActivityTracker {
 
     this.heartbeatInterval = setInterval(async () => {
       if (this.isActive && this.username && navigator.onLine && !this.isPausedByNetwork) {
-        await this.updateActivityHeartbeat()
+        await this.updateActivityHeartbeat().catch(err => console.warn('Heartbeat error (non-critical):', err))
       }
     }, 30000) // 30 seconds
   }
@@ -89,38 +89,43 @@ export class ActivityTracker {
     }
 
     try {
-      const { error } = await supabase
-        .from('user_activity_logs')
-        .insert({
-          username: this.username,
-          activity_type: 'heartbeat',
-          session_id: this.sessionId,
-          activity_details: {
-            timestamp: new Date().toISOString(),
+      // Wrap in try/catch to prevent errors from bubbling up
+      try {
+        const { error } = await supabase
+          .from('user_activity_logs')
+          .insert({
+            username: this.username,
+            activity_type: 'heartbeat',
+            session_id: this.sessionId,
+            activity_details: {
+              timestamp: new Date().toISOString(),
+              page_url: window.location.href,
+              user_agent: navigator.userAgent
+            },
             page_url: window.location.href,
             user_agent: navigator.userAgent
-          },
-          page_url: window.location.href,
-          user_agent: navigator.userAgent
-        })
+          })
 
-      if (error) {
-        console.error('Activity heartbeat error:', error)
-        // Don't throw error to prevent disrupting user experience
-        return
+        if (error) {
+          console.warn('Activity heartbeat warning:', error)
+          // Don't throw error to prevent disrupting user experience
+          return
+        }
+
+        // Update user's last activity
+        await supabase
+          .from('users')
+          .update({ 
+            last_active: new Date().toISOString(),
+            current_page: window.location.pathname
+          })
+          .eq('username', this.username)
+          .catch(err => console.warn('User activity update warning:', err))
+      } catch (innerErr) {
+        console.warn('Activity heartbeat inner error (non-critical):', innerErr)
       }
-
-      // Update user's last activity
-      await supabase
-        .from('users')
-        .update({ 
-          last_active: new Date().toISOString(),
-          current_page: window.location.pathname
-        })
-        .eq('username', this.username)
-
     } catch (err) {
-      console.error('Activity heartbeat failed:', err)
+      console.warn('Activity heartbeat failed (non-critical):', err)
       
       // If it's a network error, pause tracking and let network events handle resumption
       if (err instanceof TypeError && err.message.includes('Failed to fetch')) {
@@ -149,23 +154,28 @@ export class ActivityTracker {
     }
 
     try {
-      const { error } = await supabase
-        .from('user_activity_logs')
-        .insert({
-          username: this.username,
-          activity_type: activityType,
-          session_id: this.sessionId,
-          activity_details: details,
-          page_url: window.location.href,
-          user_agent: navigator.userAgent,
-          timestamp: new Date().toISOString()
-        })
+      // Wrap in try/catch to prevent errors from bubbling up
+      try {
+        const { error } = await supabase
+          .from('user_activity_logs')
+          .insert({
+            username: this.username,
+            activity_type: activityType,
+            session_id: this.sessionId,
+            activity_details: details,
+            page_url: window.location.href,
+            user_agent: navigator.userAgent,
+            timestamp: new Date().toISOString()
+          })
 
-      if (error) {
-        console.error('Activity logging error:', error)
+        if (error) {
+          console.warn('Activity logging warning:', error)
+        }
+      } catch (innerErr) {
+        console.warn('Activity logging inner error (non-critical):', innerErr)
       }
     } catch (err) {
-      console.error('Activity logging failed:', err)
+      console.warn('Activity logging failed (non-critical):', err)
       
       // If it's a network error, mark as paused
       if (err instanceof TypeError && err.message.includes('Failed to fetch')) {
@@ -176,6 +186,7 @@ export class ActivityTracker {
 
   async logLessonStart(lessonId: string) {
     await this.logActivity('lesson_start', { lesson_id: lessonId })
+      .catch(err => console.warn('Lesson start logging error (non-critical):', err))
   }
 
   async logLessonComplete(lessonId: string, score: number, timeSpent: number) {
@@ -183,7 +194,7 @@ export class ActivityTracker {
       lesson_id: lessonId,
       score,
       time_spent_seconds: timeSpent
-    })
+    }).catch(err => console.warn('Lesson complete logging error (non-critical):', err))
   }
 
   async logQuizAttempt(lessonId: string, score: number, totalQuestions: number) {
@@ -192,7 +203,7 @@ export class ActivityTracker {
       score,
       total_questions: totalQuestions,
       percentage: totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0
-    })
+    }).catch(err => console.warn('Quiz attempt logging error (non-critical):', err))
   }
 
   async logGamePlay(gameType: string, score: number, duration: number) {
@@ -200,14 +211,14 @@ export class ActivityTracker {
       game_type: gameType,
       score,
       duration_seconds: duration
-    })
+    }).catch(err => console.warn('Game play logging error (non-critical):', err))
   }
 
   async logPageView(pagePath: string) {
     await this.logActivity('page_view', {
       page_path: pagePath,
       referrer: document.referrer
-    })
+    }).catch(err => console.warn('Page view logging error (non-critical):', err))
   }
 }
 
