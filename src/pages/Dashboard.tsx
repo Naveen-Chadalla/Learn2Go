@@ -4,27 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useData } from '../contexts/DataContext'
 import { motion } from 'framer-motion'
-import { 
-  BookOpen, 
-  TrendingUp, 
-  Award, 
-  Clock, 
-  PlayCircle, 
-  CheckCircle,
-  Star,
-  Target,
-  Zap,
-  Globe,
-  MapPin,
-  Trophy,
-  RefreshCw,
-  Sparkles,
-  Users,
-  Calendar,
-  Flame,
-  AlertCircle,
-  Certificate
-} from 'lucide-react'
+import { BookOpen, TrendingUp, Award, Clock, PlayCircle, CheckCircle, Star, Target, Zap, Globe, MapPin, Trophy, RefreshCw, Sparkles, Users, Calendar, Flame, AlertCircle, AlignCenterVertical as Certificate } from 'lucide-react'
 import { getCountryByCode, getLanguageByCode } from '../types/countries'
 import DynamicTagline from '../components/DynamicTagline'
 
