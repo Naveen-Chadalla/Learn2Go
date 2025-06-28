@@ -159,7 +159,7 @@ export class ActivityTracker {
       lesson_id: lessonId,
       score,
       total_questions: totalQuestions,
-      percentage: Math.round((score / totalQuestions) * 100)
+      percentage: totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0
     })
   }
 

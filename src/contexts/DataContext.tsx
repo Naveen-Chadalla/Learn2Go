@@ -278,12 +278,41 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           lastActivity: updatedProgress.length > 0 ? updatedProgress[0].completed_at : null
         }
 
+        // Update user profile progress
+        const updatedUserProfile = prev.userProfile ? {
+          ...prev.userProfile,
+          progress: updatedAnalytics.completionRate,
+          current_level: Math.max(1, Math.floor(completedProgress.length / 3) + 1)
+        } : null;
+
         return {
           ...prev,
           userProgress: updatedProgress,
-          analytics: updatedAnalytics
+          analytics: updatedAnalytics,
+          userProfile: updatedUserProfile
         }
       })
+
+      // Call the server-side function to update user progress and profile
+      try {
+        await supabase.rpc('update_user_progress', {
+          p_username: username,
+          p_lesson_id: lessonId,
+          p_completed: completed,
+          p_score: score
+        });
+      } catch (rpcError) {
+        console.warn('RPC update_user_progress failed, falling back to direct updates', rpcError);
+        
+        // Update user profile directly as fallback
+        await supabase
+          .from('users')
+          .update({
+            last_active: new Date().toISOString(),
+            last_lesson_completed: lessonId
+          })
+          .eq('username', username);
+      }
 
     } catch (error) {
       console.error('Error updating user progress:', error)
