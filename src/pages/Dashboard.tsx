@@ -50,6 +50,16 @@ const Dashboard: React.FC = () => {
     setDashboardError(null)
   }, [isAuthenticated, user])
 
+  // Calculate user progress percentage
+  const calculateProgress = () => {
+    if (!data.userProfile) return 0
+    
+    const completedLessons = data.userProgress.filter(p => p.completed).length
+    const totalLessons = Math.max(data.lessons.length, 1) // Avoid division by zero
+    
+    return Math.min(100, Math.round((completedLessons / totalLessons) * 100))
+  }
+
   const handleRefresh = async () => {
     setRefreshing(true)
     try {
@@ -105,6 +115,9 @@ const Dashboard: React.FC = () => {
 
   const { userProfile, lessons, userProgress, badges, analytics, countryTheme } = data
 
+  // Calculate actual progress percentage
+  const progressPercentage = calculateProgress()
+
   const completedLessonIds = new Set(
     userProgress.filter(p => p.completed).map(p => p.lesson_id)
   )
@@ -125,7 +138,7 @@ const Dashboard: React.FC = () => {
     },
     {
       title: t('dashboard.completedLessons'),
-      value: analytics.totalQuizzes,
+      value: completedLessonIds.size,
       icon: <CheckCircle className="h-6 w-6" />,
       color: 'from-green-500 to-emerald-500',
       bgColor: 'bg-gradient-to-br from-green-50 to-emerald-50',
@@ -318,14 +331,14 @@ const Dashboard: React.FC = () => {
             <h2 className="text-3xl font-bold text-gray-900">{t('dashboard.progress')}</h2>
             <div className="flex items-center space-x-2 text-sm text-gray-600">
               <TrendingUp className="h-5 w-5 text-green-500" />
-              <span className="font-semibold">{userProfile?.progress || 0}% Complete</span>
+              <span className="font-semibold">{progressPercentage}% Complete</span>
             </div>
           </div>
           
           <div className="mb-8">
             <div className="flex justify-between text-sm text-gray-600 mb-3">
               <span className="font-medium">Overall Progress</span>
-              <span className="font-bold">{userProfile?.progress || 0}%</span>
+              <span className="font-bold">{progressPercentage}%</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-4 shadow-inner">
               <motion.div 
@@ -334,7 +347,7 @@ const Dashboard: React.FC = () => {
                   background: `linear-gradient(90deg, ${countryTheme.primaryColor}, ${countryTheme.secondaryColor})`
                 }}
                 initial={{ width: 0 }}
-                animate={{ width: `${userProfile?.progress || 0}%` }}
+                animate={{ width: `${progressPercentage}%` }}
                 transition={{ duration: 1.5, ease: "easeOut" }}
               />
             </div>
@@ -397,7 +410,7 @@ const Dashboard: React.FC = () => {
             <h2 className="text-3xl font-bold text-gray-900">{t('dashboard.availableLessons')}</h2>
             <div className="flex items-center space-x-2 text-sm text-gray-600">
               <TrendingUp className="h-5 w-5" />
-              <span className="font-semibold">{analytics.completionRate}% completed</span>
+              <span className="font-semibold">{progressPercentage}% completed</span>
             </div>
           </div>
 

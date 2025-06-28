@@ -189,7 +189,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setInitialized(true)
       setLoading(false)
       
-      console.log('[DATA] Data load completed successfully')
+      console.log('[DATA] Data preload completed successfully')
 
     } catch (error) {
       console.error('[DATA] Data load failed:', error)
@@ -278,18 +278,60 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           lastActivity: updatedProgress.length > 0 ? updatedProgress[0].completed_at : null
         }
 
+        // Update user profile progress
+        const userProfile = prev.userProfile ? {
+          ...prev.userProfile,
+          progress: Math.min(100, Math.round((completedProgress.length / Math.max(prev.lessons.length, 1)) * 100)),
+          current_level: Math.max(1, Math.floor(completedProgress.length / 3) + 1)
+        } : null
+
         return {
           ...prev,
           userProgress: updatedProgress,
-          analytics: updatedAnalytics
+          analytics: updatedAnalytics,
+          userProfile
         }
       })
+
+      // Also update the user's progress in the database
+      if (completed) {
+        try {
+          const { data: userProfile } = await supabase
+            .from('users')
+            .select('progress, current_level')
+            .eq('username', username)
+            .single()
+          
+          if (userProfile) {
+            const completedLessons = data.userProgress.filter(p => p.completed).length + (
+              data.userProgress.findIndex(p => p.lesson_id === lessonId && p.completed) === -1 ? 1 : 0
+            )
+            
+            const totalLessons = Math.max(data.lessons.length, 1)
+            const newProgress = Math.min(100, Math.round((completedLessons / totalLessons) * 100))
+            const newLevel = Math.max(1, Math.floor(completedLessons / 3) + 1)
+            
+            await supabase
+              .from('users')
+              .update({
+                progress: newProgress,
+                current_level: newLevel,
+                last_lesson_completed: lessonId,
+                last_active: new Date().toISOString()
+              })
+              .eq('username', username)
+          }
+        } catch (updateError) {
+          console.error('Error updating user profile progress:', updateError)
+          // Non-critical error, don't throw
+        }
+      }
 
     } catch (error) {
       console.error('Error updating user progress:', error)
       throw error
     }
-  }, [user])
+  }, [user, data.userProgress, data.lessons.length])
 
   const clearCache = useCallback(() => {
     dataPreloader.clearCache()

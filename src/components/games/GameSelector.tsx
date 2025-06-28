@@ -1,11 +1,9 @@
 import React, { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Info } from 'lucide-react'
 import TrafficLightGame from './TrafficLightGame'
 import PedestrianCrossingGame from './PedestrianCrossingGame'
 import ParkingGame from './ParkingGame'
 import SpeedLimitGame from './SpeedLimitGame'
-import GameInstructions from '../GameInstructions'
 
 interface GameSelectorProps {
   lessonId: string
@@ -27,8 +25,6 @@ const GameSelector: React.FC<GameSelectorProps> = ({
   onComplete,
   theme
 }) => {
-  const [showInstructions, setShowInstructions] = useState(true)
-  
   // Determine which game to show based on lesson content
   const getGameType = () => {
     const title = lessonTitle.toLowerCase()
@@ -53,7 +49,7 @@ const GameSelector: React.FC<GameSelectorProps> = ({
     if (country === 'IN') {
       return 'traffic-light'
     } else if (country === 'US') {
-      return 'parking'
+      return 'speed-limit'
     } else {
       return 'pedestrian-crossing'
     }
@@ -83,28 +79,6 @@ const GameSelector: React.FC<GameSelectorProps> = ({
       transition={{ duration: 0.3 }}
       className="w-full"
     >
-      {/* Help Button */}
-      {!showInstructions && (
-        <motion.button
-          onClick={() => setShowInstructions(true)}
-          whileHover={{ scale: 1.1, rotate: 10 }}
-          whileTap={{ scale: 0.9 }}
-          className="fixed top-24 right-6 z-50 bg-white rounded-full p-3 shadow-lg border border-gray-200"
-          style={{ background: `linear-gradient(135deg, ${theme.primaryColor}, ${theme.secondaryColor})` }}
-        >
-          <Info className="h-6 w-6 text-white" />
-        </motion.button>
-      )}
-
-      {/* Instructions Modal */}
-      {showInstructions && (
-        <GameInstructions 
-          gameType={getGameType() as any}
-          onClose={() => setShowInstructions(false)}
-          theme={theme}
-        />
-      )}
-
       {/* Game Component */}
       {renderGame()}
     </motion.div>
