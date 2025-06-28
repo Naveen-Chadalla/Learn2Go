@@ -85,6 +85,7 @@ export class ActivityTracker {
 
     // Check network status before attempting any requests
     if (!navigator.onLine || this.isPausedByNetwork) {
+      console.log('Network unavailable, skipping heartbeat')
       return
     }
 
