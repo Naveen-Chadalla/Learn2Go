@@ -162,84 +162,25 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isDataReady, setIsDataReady] = useState(false)
   const [initialized, setInitialized] = useState(false)
 
-  // Enhanced session isolation for data context
-  const clearUserData = useCallback(() => {
-    const currentUser = user?.user_metadata?.username || user?.email?.split('@')[0]
-    
-    if (currentUser) {
-      // Clear user-specific data cache
-      const userCacheKey = `data-${currentUser.toLowerCase()}`
-      sessionStorage.removeItem(userCacheKey)
-      localStorage.removeItem(`learn2go-${currentUser}-data`)
-      
-      console.log(`[DATA] Cleared data cache for user: ${currentUser}`)
-    }
-    
-    // Reset data state
-    setData(defaultData)
-    setIsDataReady(false)
-    setProgress(0)
-    setInitialized(false)
-    setLoading(false)
-  }, [user])
-
-  // Enhanced data loading with session isolation
+  // Load data using dataPreloader service
   const loadData = useCallback(async () => {
     if (!user || !isAuthenticated || initialized) {
       return
     }
 
-    const currentUser = user.user_metadata?.username || user.email?.split('@')[0]
-    if (!currentUser) {
-      console.error('[DATA] No valid user identifier found')
-      return
-    }
-
-    console.log(`[DATA] Starting isolated data load for user: ${currentUser}`)
+    console.log('[DATA] Starting data load with preloader...')
     setLoading(true)
     setError(null)
     setProgress(0)
     
     try {
-      // Check for cached data with user isolation
-      const userCacheKey = `data-${currentUser.toLowerCase()}`
-      const cachedData = sessionStorage.getItem(userCacheKey)
-      
-      if (cachedData) {
-        try {
-          const parsedCache = JSON.parse(cachedData)
-          const cacheAge = Date.now() - parsedCache.timestamp
-          
-          // Use cache if less than 5 minutes old
-          if (cacheAge < 5 * 60 * 1000) {
-            console.log(`[DATA] Using cached data for user: ${currentUser}`)
-            setData(parsedCache.data)
-            setProgress(100)
-            setIsDataReady(true)
-            setInitialized(true)
-            setLoading(false)
-            return
-          }
-        } catch (cacheError) {
-          console.warn('[DATA] Cache parse error:', cacheError)
-        }
-      }
-
-      // Set up progress callback with user isolation
+      // Set up progress callback
       dataPreloader.setProgressCallback((progressInfo) => {
         setProgress(progressInfo.percentage)
       })
 
-      // Load all data using the preloader with user isolation
+      // Load all data using the preloader
       const preloadedData = await dataPreloader.preloadAllData(user)
-      
-      // Cache the data with user isolation
-      const cacheData = {
-        data: preloadedData,
-        timestamp: Date.now(),
-        user: currentUser
-      }
-      sessionStorage.setItem(userCacheKey, JSON.stringify(cacheData))
       
       // Set the loaded data
       setData(preloadedData)
@@ -248,18 +189,18 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setInitialized(true)
       setLoading(false)
       
-      console.log(`[DATA] Data load completed successfully for user: ${currentUser}`)
+      console.log('[DATA] Data load completed successfully')
 
     } catch (error) {
-      console.error(`[DATA] Data load failed for user ${currentUser}:`, error)
+      console.error('[DATA] Data load failed:', error)
       setError('Failed to load data')
       setLoading(false)
       
-      // Set minimal fallback data with user isolation
+      // Set minimal fallback data
       setData({
         ...defaultData,
         userProfile: {
-          username: currentUser,
+          username: user.user_metadata?.username || user.email?.split('@')[0] || 'user',
           email: user.email || 'user@example.com',
           country: user.user_metadata?.country || 'US',
           language: user.user_metadata?.language || 'en',
@@ -277,18 +218,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user, isAuthenticated, initialized])
 
   const refreshData = useCallback(async () => {
-    console.log('[DATA] Manual refresh requested with session isolation')
-    const currentUser = user?.user_metadata?.username || user?.email?.split('@')[0]
-    
-    if (currentUser) {
-      // Clear user-specific cache
-      const userCacheKey = `data-${currentUser.toLowerCase()}`
-      sessionStorage.removeItem(userCacheKey)
-    }
-    
+    console.log('[DATA] Manual refresh requested')
     setInitialized(false)
     await loadData()
-  }, [loadData, user])
+  }, [loadData])
 
   const updateUserProgress = useCallback(async (lessonId: string, score: number, completed: boolean) => {
     if (!user) return
@@ -308,7 +241,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) throw error
 
-      // Update local data with session isolation
+      // Update local data
       setData(prev => {
         const existingIndex = prev.userProgress.findIndex(p => p.lesson_id === lessonId)
         const newProgress = {
@@ -343,25 +276,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           lastActivity: updatedProgress.length > 0 ? updatedProgress[0].completed_at : null
         }
 
-        const updatedData = {
+        return {
           ...prev,
           userProgress: updatedProgress,
           analytics: updatedAnalytics
         }
-
-        // Update cache with user isolation
-        const currentUser = user.user_metadata?.username || user.email?.split('@')[0]
-        if (currentUser) {
-          const userCacheKey = `data-${currentUser.toLowerCase()}`
-          const cacheData = {
-            data: updatedData,
-            timestamp: Date.now(),
-            user: currentUser
-          }
-          sessionStorage.setItem(userCacheKey, JSON.stringify(cacheData))
-        }
-
-        return updatedData
       })
 
     } catch (error) {
@@ -372,42 +291,29 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const clearCache = useCallback(() => {
     dataPreloader.clearCache()
-    
-    // Clear user-specific cache
-    const currentUser = user?.user_metadata?.username || user?.email?.split('@')[0]
-    if (currentUser) {
-      const userCacheKey = `data-${currentUser.toLowerCase()}`
-      sessionStorage.removeItem(userCacheKey)
-    }
-    
-    console.log('[DATA] Cache cleared with session isolation')
-  }, [user])
+    console.log('[DATA] Cache cleared')
+  }, [])
 
   const getCacheStats = useCallback(() => {
     return dataPreloader.getCacheStats()
   }, [])
 
-  // Initialize data when user becomes authenticated with session isolation
+  // Initialize data when user becomes authenticated
   useEffect(() => {
     if (isAuthenticated && user && !initialized) {
-      // Verify user session isolation
-      const currentUser = user.user_metadata?.username || user.email?.split('@')[0]
-      const sessionUser = sessionStorage.getItem('learn2go-current-user')
-      
-      if (sessionUser && sessionUser !== currentUser?.toLowerCase()) {
-        console.log('[DATA] Different user detected, clearing previous data')
-        clearUserData()
-      }
-      
       // Use setTimeout to prevent any potential race conditions
       setTimeout(() => {
         loadData()
       }, 0)
     } else if (!isAuthenticated) {
-      // Reset everything when user logs out with session isolation
-      clearUserData()
+      // Reset everything when user logs out
+      setData(defaultData)
+      setIsDataReady(false)
+      setProgress(0)
+      setInitialized(false)
+      setLoading(false)
     }
-  }, [isAuthenticated, user, initialized, loadData, clearUserData])
+  }, [isAuthenticated, user, initialized, loadData])
 
   const value = {
     data,
