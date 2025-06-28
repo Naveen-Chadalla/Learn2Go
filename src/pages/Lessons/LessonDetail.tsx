@@ -265,14 +265,17 @@ const LessonDetail: React.FC = () => {
   }
 
   const handleGameComplete = (score: number) => {
+    // Ensure score is a valid number between 0-100
+    const validScore = Math.min(100, Math.max(0, Math.round(score)))
     const gameTimeSpent = Math.floor((Date.now() - gameStartTime) / 1000)
-    setGameScore(score)
+    
+    setGameScore(validScore)
     setShowGameResults(true)
     setStepProgress(prev => ({ ...prev, game: true }))
 
     // Track game completion
     if (lesson) {
-      trackGamePlay(lesson.id, `${lesson.title} Game`, score, gameTimeSpent)
+      trackGamePlay(lesson.id, `${lesson.title} Game`, validScore, gameTimeSpent)
     }
 
     // Show celebration

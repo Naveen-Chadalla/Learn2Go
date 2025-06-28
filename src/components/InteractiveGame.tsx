@@ -38,13 +38,20 @@ const InteractiveGame: React.FC<InteractiveGameProps> = ({
     }
   }
 
+  // Ensure score is properly passed to parent component
+  const handleGameComplete = (gameScore: number) => {
+    // Make sure score is a valid number between 0-100
+    const validScore = Math.min(100, Math.max(0, Math.round(gameScore)))
+    onComplete(validScore)
+  }
+
   return (
     <GameSelector
       lessonId={lessonId}
       lessonTitle={getLessonTitle()}
       country={country}
       language={language}
-      onComplete={onComplete}
+      onComplete={handleGameComplete}
       theme={theme}
     />
   )
