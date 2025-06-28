@@ -89,10 +89,10 @@ class DataPreloader {
       this.updateProgress(++currentStep, totalSteps, 'Loading lessons...')
       const lessons = await this.loadLessons(profile.country, profile.language)
 
-      // Step 3: Load static content (parallel, fast)
+      // Step 3: Load enhanced images (parallel, fast)
       this.updateProgress(++currentStep, totalSteps, 'Loading media content...')
       const [images, animations, languageContent] = await Promise.allSettled([
-        this.loadImages(profile.country),
+        this.loadEnhancedImages(profile.country, lessons),
         this.loadAnimations(),
         this.loadLanguageContent(profile.language)
       ])
@@ -357,22 +357,75 @@ class DataPreloader {
     return games
   }
 
-  private async loadImages(country: string) {
-    const cacheKey = `images_${country}`
+  private async loadEnhancedImages(country: string, lessons: any[]) {
+    const cacheKey = `enhanced_images_${country}`
     const cached = this.getCache(cacheKey)
     if (cached) return cached
 
-    // Pre-validated Pexels URLs for instant loading
-    const images = [
-      'https://images.pexels.com/photos/210182/pexels-photo-210182.jpeg?auto=compress&cs=tinysrgb&w=400',
-      'https://images.pexels.com/photos/544966/pexels-photo-544966.jpeg?auto=compress&cs=tinysrgb&w=400',
-      'https://images.pexels.com/photos/1004409/pexels-photo-1004409.jpeg?auto=compress&cs=tinysrgb&w=400',
-      'https://images.pexels.com/photos/2199293/pexels-photo-2199293.jpeg?auto=compress&cs=tinysrgb&w=400',
-      'https://images.pexels.com/photos/1563356/pexels-photo-1563356.jpeg?auto=compress&cs=tinysrgb&w=400',
+    // Enhanced image collection with topic-specific and country-specific images
+    const baseImages = [
+      'https://images.pexels.com/photos/210182/pexels-photo-210182.jpeg?auto=compress&cs=tinysrgb&w=800',
+      'https://images.pexels.com/photos/544966/pexels-photo-544966.jpeg?auto=compress&cs=tinysrgb&w=800',
+      'https://images.pexels.com/photos/1004409/pexels-photo-1004409.jpeg?auto=compress&cs=tinysrgb&w=800',
+      'https://images.pexels.com/photos/2199293/pexels-photo-2199293.jpeg?auto=compress&cs=tinysrgb&w=800',
+      'https://images.pexels.com/photos/1563356/pexels-photo-1563356.jpeg?auto=compress&cs=tinysrgb&w=800'
     ]
 
-    this.setCache(cacheKey, images, 24 * 60 * 60 * 1000) // 24 hour cache for images
-    return images
+    // Topic-specific images
+    const topicImages = {
+      traffic_signals: [
+        'https://images.pexels.com/photos/2199293/pexels-photo-2199293.jpeg?auto=compress&cs=tinysrgb&w=800',
+        'https://images.pexels.com/photos/1563356/pexels-photo-1563356.jpeg?auto=compress&cs=tinysrgb&w=800',
+        'https://images.pexels.com/photos/378570/pexels-photo-378570.jpeg?auto=compress&cs=tinysrgb&w=800'
+      ],
+      pedestrian_safety: [
+        'https://images.pexels.com/photos/1004409/pexels-photo-1004409.jpeg?auto=compress&cs=tinysrgb&w=800',
+        'https://images.pexels.com/photos/1545743/pexels-photo-1545743.jpeg?auto=compress&cs=tinysrgb&w=800',
+        'https://images.pexels.com/photos/2199293/pexels-photo-2199293.jpeg?auto=compress&cs=tinysrgb&w=800'
+      ],
+      parking: [
+        'https://images.pexels.com/photos/164634/pexels-photo-164634.jpeg?auto=compress&cs=tinysrgb&w=800',
+        'https://images.pexels.com/photos/210182/pexels-photo-210182.jpeg?auto=compress&cs=tinysrgb&w=800',
+        'https://images.pexels.com/photos/1545743/pexels-photo-1545743.jpeg?auto=compress&cs=tinysrgb&w=800'
+      ],
+      emergency: [
+        'https://images.pexels.com/photos/1545743/pexels-photo-1545743.jpeg?auto=compress&cs=tinysrgb&w=800',
+        'https://images.pexels.com/photos/378570/pexels-photo-378570.jpeg?auto=compress&cs=tinysrgb&w=800',
+        'https://images.pexels.com/photos/2199293/pexels-photo-2199293.jpeg?auto=compress&cs=tinysrgb&w=800'
+      ]
+    }
+
+    // Country-specific images
+    const countryImages = {
+      'IN': [
+        'https://images.pexels.com/photos/1004409/pexels-photo-1004409.jpeg?auto=compress&cs=tinysrgb&w=800', // Indian traffic
+        'https://images.pexels.com/photos/378570/pexels-photo-378570.jpeg?auto=compress&cs=tinysrgb&w=800', // Busy streets
+        'https://images.pexels.com/photos/2199293/pexels-photo-2199293.jpeg?auto=compress&cs=tinysrgb&w=800' // Traffic signals
+      ],
+      'US': [
+        'https://images.pexels.com/photos/210182/pexels-photo-210182.jpeg?auto=compress&cs=tinysrgb&w=800', // US highways
+        'https://images.pexels.com/photos/544966/pexels-photo-544966.jpeg?auto=compress&cs=tinysrgb&w=800', // Stop signs
+        'https://images.pexels.com/photos/164634/pexels-photo-164634.jpeg?auto=compress&cs=tinysrgb&w=800' // Parking lots
+      ],
+      'GB': [
+        'https://images.pexels.com/photos/210182/pexels-photo-210182.jpeg?auto=compress&cs=tinysrgb&w=800', // UK roads
+        'https://images.pexels.com/photos/378570/pexels-photo-378570.jpeg?auto=compress&cs=tinysrgb&w=800', // Roundabouts
+        'https://images.pexels.com/photos/1563356/pexels-photo-1563356.jpeg?auto=compress&cs=tinysrgb&w=800' // Traffic management
+      ]
+    }
+
+    // Combine all images
+    const allImages = [
+      ...baseImages,
+      ...(countryImages[country as keyof typeof countryImages] || []),
+      ...Object.values(topicImages).flat()
+    ]
+
+    // Remove duplicates and limit to reasonable number
+    const uniqueImages = [...new Set(allImages)].slice(0, 15)
+
+    this.setCache(cacheKey, uniqueImages, 24 * 60 * 60 * 1000) // 24 hour cache for images
+    return uniqueImages
   }
 
   private async loadAnimations() {
