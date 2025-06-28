@@ -202,7 +202,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
-      // Check if username exists in public.users table
       const { data, error } = await supabase
         .from('users')
         .select('username')
@@ -215,40 +214,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       // If there's an error, it's a real failure
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
         logDebugInfo('Username availability check failed', error)
         return { available: false, message: 'Error checking username availability' }
       }
 
-      // Check if the derived email already exists in Supabase auth.users
-      // We do this by attempting a "dry run" sign-in with a dummy password
-      const tempEmail = `${normalizedUsername}@learn2go.local`
-      const dummyPassword = 'dummy_password_for_check'
-      
-      try {
-        const { error: authError } = await supabase.auth.signInWithPassword({
-          email: tempEmail,
-          password: dummyPassword
-        })
-
-        // If we get invalid_credentials error, it means the email exists but password is wrong
-        // This indicates the username is already taken in the auth system
-        if (authError && (
-          authError.message?.toLowerCase().includes('invalid login credentials') ||
-          authError.message?.toLowerCase().includes('invalid_credentials') ||
-          authError.code === 'invalid_credentials'
-        )) {
-          return { available: false, message: 'Username is already registered. Please try signing in instead.' }
-        }
-
-        // Any other auth error (like network issues) should not block availability check
-        // We'll assume the username is available if we can't verify otherwise
-      } catch (authCheckError) {
-        // Network or other errors during auth check - don't block availability
-        logDebugInfo('Auth availability check failed, proceeding with availability', authCheckError)
-      }
-
-      // If both checks pass, username is available
+      // If both data and error are null, username is available
       return { available: true, message: 'Username is available!' }
     } catch (error) {
       logDebugInfo('Username availability check failed', error)
@@ -352,41 +323,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Clear any existing session data
       clearSessionData()
       
-      // First, check if the username exists in our users table
-      const { data: existingUser, error: userCheckError } = await supabase
-        .from('users')
-        .select('username, email')
-        .eq('username', normalizedUsername)
-        .maybeSingle()
-
-      if (userCheckError && userCheckError.code !== 'PGRST116') {
-        logDebugInfo('Error checking user existence', userCheckError)
-        return { 
-          data: null, 
-          error: { 
-            message: 'Error checking user account. Please try again.',
-            code: 'user_check_error'
-          } 
-        }
-      }
-
-      // If user doesn't exist in our users table, provide specific guidance
-      if (!existingUser) {
-        logDebugInfo(`Username ${normalizedUsername} not found in users table`)
-        return { 
-          data: null, 
-          error: { 
-            message: 'Username not found. Please check your username or sign up for a new account.',
-            code: 'username_not_found'
-          } 
-        }
-      }
-
-      // User exists, proceed with authentication
       const tempEmail = `${normalizedUsername}@learn2go.local`
       const tempPassword = `${normalizedUsername}_temp_pass_123`
       
-      // Attempt authentication with Supabase Auth
+      // Attempt authentication with Supabase Auth first
       const { data, error } = await supabase.auth.signInWithPassword({ 
         email: tempEmail, 
         password: tempPassword 
@@ -400,70 +340,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             error.message?.toLowerCase().includes('invalid_credentials') ||
             error.code === 'invalid_credentials' ||
             error.status === 400) {
-          
-          // Try to recreate the user account if credentials are invalid
-          // This can happen if the user exists in our database but not in auth
-          try {
-            logDebugInfo('Attempting to recreate user auth account', { username: normalizedUsername })
-            
-            // Try to sign up the user again with the same credentials
-            const { data: signupData, error: signupError } = await supabase.auth.signUp({
-              email: tempEmail,
-              password: tempPassword,
-              options: {
-                data: {
-                  username: normalizedUsername,
-                  country: existingUser.country || 'US',
-                  language: existingUser.language || 'en',
-                }
-              }
-            })
-            
-            if (signupError) {
-              logDebugInfo('Failed to recreate user auth account', signupError)
-              return { 
-                data: null, 
-                error: { 
-                  message: 'Authentication failed. Please try signing up again with a different username.',
-                  code: 'auth_recreation_failed'
-                } 
-              }
-            }
-            
-            if (signupData?.user) {
-              logDebugInfo('Successfully recreated user auth account', { username: normalizedUsername })
-              
-              // Now try to sign in again
-              const { data: newSignInData, error: newSignInError } = await supabase.auth.signInWithPassword({
-                email: tempEmail,
-                password: tempPassword
-              })
-              
-              if (newSignInError) {
-                logDebugInfo('Failed to sign in after recreation', newSignInError)
-                return { 
-                  data: null, 
-                  error: { 
-                    message: 'Account recreated but login failed. Please try signing in again.',
-                    code: 'auth_recreation_signin_failed'
-                  } 
-                }
-              }
-              
-              if (newSignInData?.user) {
-                logDebugInfo('Sign in successful after account recreation', { username: normalizedUsername })
-                await syncUserProfile(newSignInData.user)
-                return { data: newSignInData, error: null }
-              }
-            }
-          } catch (recreationError) {
-            logDebugInfo('Exception during account recreation', recreationError)
-          }
-          
           return { 
             data: null, 
             error: { 
-              message: 'Invalid username or password. Please check your credentials or sign up for a new account.',
+              message: 'Invalid username or the account may not exist. Please check your username or sign up for a new account.',
               code: 'invalid_credentials'
             } 
           }
@@ -546,30 +426,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Clear any existing session data
       clearSessionData()
       
-      // Check username availability
       const availability = await checkUsernameAvailability(normalizedUsername)
       if (!availability.available) {
-        // If username is taken, check if it's because the user exists in auth system
-        if (availability.message.includes('already registered')) {
-          return { 
-            data: { 
-              user: null, 
-              shouldRedirectToLogin: true 
-            }, 
-            error: { 
-              message: 'This username is already registered. Please try signing in instead.',
-              code: 'user_exists'
-            } 
-          }
-        }
-        
         return { data: null, error: { message: availability.message } }
       }
       
       const tempEmail = `${normalizedUsername}@learn2go.local`
       const tempPassword = `${normalizedUsername}_temp_pass_123`
       
-      // Try to sign up the user
       const { data, error } = await supabase.auth.signUp({
         email: tempEmail,
         password: tempPassword,
@@ -586,30 +450,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) {
         logDebugInfo('Sign up error', error)
         
-        // Handle specific signup errors with improved invalid_credentials handling
-        if (error.message?.toLowerCase().includes('user already registered') ||
-            error.code === 'user_already_exists') {
+        // Handle specific signup errors
+        if (error.message?.toLowerCase().includes('user already registered')) {
           return { 
-            data: { 
-              user: null, 
-              shouldRedirectToLogin: true 
-            }, 
-            error: { 
-              message: 'This username is already registered. Please try signing in instead.',
-              code: 'user_exists'
-            } 
-          }
-        }
-
-        // Handle invalid_credentials error during signup
-        if (error.message?.toLowerCase().includes('invalid login credentials') ||
-            error.message?.toLowerCase().includes('invalid_credentials') ||
-            error.code === 'invalid_credentials') {
-          return { 
-            data: { 
-              user: null, 
-              shouldRedirectToLogin: true 
-            }, 
+            data: null, 
             error: { 
               message: 'This username is already registered. Please try signing in instead.',
               code: 'user_exists'
@@ -626,42 +470,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
 
-      // Critical validation: Ensure user was actually created
-      if (!data.user) {
-        logDebugInfo('Sign up failed: User creation returned null despite no error')
+      if (data.user) {
+        logDebugInfo('Creating user profile in database')
+        const { error: profileError } = await supabase.from('users').insert({
+          username: normalizedUsername,
+          email: tempEmail,
+          country: country,
+          language: language,
+        })
+
+        if (profileError) {
+          logDebugInfo('Error creating user profile', profileError)
+          // Don't fail the signup if profile creation fails, but log it
+        }
+        
+        logDebugInfo('Sign up successful', { username: normalizedUsername })
+        
+        // Return success with redirect flag
         return { 
-          data: null, 
-          error: { 
-            message: 'Account creation failed unexpectedly. Please try again or contact support if the issue persists.',
-            code: 'user_creation_failed'
-          } 
+          data: { 
+            ...data, 
+            shouldRedirectToLogin: true 
+          }, 
+          error: null 
         }
       }
 
-      logDebugInfo('Creating user profile in database')
-      const { error: profileError } = await supabase.from('users').insert({
-        username: normalizedUsername,
-        email: tempEmail,
-        country: country,
-        language: language,
-      })
-
-      if (profileError) {
-        logDebugInfo('Error creating user profile', profileError)
-        // Don't fail the signup if profile creation fails, but log it
-      }
-      
-      logDebugInfo('Sign up successful', { username: normalizedUsername })
-      
-      // Return success with redirect flag
-      return { 
-        data: { 
-          ...data, 
-          shouldRedirectToLogin: true 
-        }, 
-        error: null 
-      }
-
+      return { data, error: null }
     } catch (error) {
       logDebugInfo('Exception during sign up', error)
       return { 

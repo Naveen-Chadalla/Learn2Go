@@ -4,16 +4,11 @@ import { AuthProvider } from './contexts/AuthContext'
 import { LanguageProvider } from './contexts/LanguageContext'
 import { DataProvider } from './contexts/DataContext'
 import { useActivityTracking } from './hooks/useActivityTracking'
-import { useToast } from './hooks/useToast'
 import ProtectedRoute from './components/ProtectedRoute'
 import AuthRedirect from './components/AuthRedirect'
 import DataLoader from './components/DataLoader'
-import ModernNavbar from './components/Layout/ModernNavbar'
+import Navbar from './components/Layout/Navbar'
 import AIAssistant from './components/AIAssistant'
-import { ToastContainer } from './components/UI/Toast'
-
-// Import design system styles
-import './styles/design-system.css'
 
 // Pages
 import Home from './pages/Home'
@@ -32,8 +27,6 @@ const ActivityTrackingWrapper: React.FC<{ children: React.ReactNode }> = ({ chil
 }
 
 function App() {
-  const { toasts, removeToast } = useToast()
-
   return (
     <LanguageProvider>
       <AuthProvider>
@@ -42,8 +35,8 @@ function App() {
             <AuthRedirect>
               <DataLoader>
                 <ActivityTrackingWrapper>
-                  <div className="min-h-screen bg-neutral-50">
-                    <ModernNavbar />
+                  <div className="min-h-screen bg-gray-50">
+                    <Navbar />
                     <Routes>
                       {/* Public routes - will redirect to dashboard if authenticated */}
                       <Route path="/" element={<Home />} />
@@ -99,9 +92,6 @@ function App() {
                     <ProtectedRoute requireAuth={false}>
                       <AIAssistant />
                     </ProtectedRoute>
-
-                    {/* Toast Notifications */}
-                    <ToastContainer toasts={toasts} onClose={removeToast} />
                   </div>
                 </ActivityTrackingWrapper>
               </DataLoader>

@@ -34,7 +34,7 @@ export const useActivityTracking = () => {
 
       const startTracking = async () => {
         try {
-          await activityTracker.startSession(username)
+          await activityTracker.startTracking(username)
         } catch (error) {
           console.error('[ACTIVITY] Failed to start session:', error)
         }
@@ -44,13 +44,13 @@ export const useActivityTracking = () => {
 
       // Set up heartbeat to keep activity updated
       const heartbeatInterval = setInterval(() => {
-        activityTracker.updateActivityHeartbeat(username)
+        activityTracker.updateActivityHeartbeat()
       }, 60000) // Every minute
 
       return () => {
         clearInterval(heartbeatInterval)
         // End session when component unmounts or user logs out
-        activityTracker.endSession(username)
+        activityTracker.stopTracking()
       }
     }
   }, [isAuthenticated, user, getCurrentUsername])
@@ -66,7 +66,7 @@ export const useActivityTracking = () => {
       }
 
       const pageTitle = getPageTitle(location.pathname)
-      activityTracker.trackPageView(username, location.pathname, pageTitle)
+      activityTracker.logPageView(location.pathname)
     }
   }, [location.pathname, isAuthenticated, user, getCurrentUsername])
 
@@ -74,14 +74,14 @@ export const useActivityTracking = () => {
   const trackLessonStart = useCallback((lessonId: string, lessonTitle: string) => {
     const username = getCurrentUsername()
     if (username) {
-      activityTracker.trackLessonStart(username, lessonId, lessonTitle)
+      activityTracker.logLessonStart(lessonId)
     }
   }, [getCurrentUsername])
 
   const trackLessonComplete = useCallback((lessonId: string, lessonTitle: string, timeSpent: number) => {
     const username = getCurrentUsername()
     if (username) {
-      activityTracker.trackLessonComplete(username, lessonId, lessonTitle, timeSpent)
+      activityTracker.logLessonComplete(lessonId, 0, timeSpent)
     }
   }, [getCurrentUsername])
 
@@ -89,14 +89,14 @@ export const useActivityTracking = () => {
   const trackQuizAttempt = useCallback((lessonId: string, quizData: any) => {
     const username = getCurrentUsername()
     if (username) {
-      activityTracker.trackQuizAttempt(username, lessonId, quizData)
+      activityTracker.logQuizAttempt(lessonId, quizData.score || 0, quizData.totalQuestions || 0)
     }
   }, [getCurrentUsername])
 
   const trackQuizComplete = useCallback((lessonId: string, score: number, timeSpent: number, quizData: any) => {
     const username = getCurrentUsername()
     if (username) {
-      activityTracker.trackQuizComplete(username, lessonId, score, timeSpent, quizData)
+      activityTracker.logQuizAttempt(lessonId, score, quizData.totalQuestions || 0)
     }
   }, [getCurrentUsername])
 
@@ -104,7 +104,7 @@ export const useActivityTracking = () => {
   const trackGamePlay = useCallback((gameId: string, gameName: string, score: number, timeSpent: number) => {
     const username = getCurrentUsername()
     if (username) {
-      activityTracker.trackGamePlay(username, gameId, gameName, score, timeSpent)
+      activityTracker.logGamePlay(gameName, score, timeSpent)
     }
   }, [getCurrentUsername])
 
@@ -112,7 +112,8 @@ export const useActivityTracking = () => {
   const getActivitySummary = useCallback(async (days: number = 7) => {
     const username = getCurrentUsername()
     if (username) {
-      return await activityTracker.getUserActivitySummary(username, days)
+      // This method doesn't exist in the current ActivityTracker, so we'll return null for now
+      return null
     }
     return null
   }, [getCurrentUsername])

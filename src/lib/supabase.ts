@@ -19,7 +19,46 @@ if (!supabaseAnonKey || supabaseAnonKey === 'your_supabase_anon_key_here') {
   )
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// Create Supabase client with better error handling
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'learning-app'
+    }
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 10
+    }
+  }
+})
+
+// Add connection test function
+export const testSupabaseConnection = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('lessons')
+      .select('count')
+      .limit(1)
+      .single()
+    
+    if (error) {
+      console.error('Supabase connection test failed:', error)
+      return false
+    }
+    
+    console.log('Supabase connection test successful')
+    return true
+  } catch (err) {
+    console.error('Supabase connection test error:', err)
+    return false
+  }
+}
 
 export type Database = {
   public: {
@@ -37,6 +76,16 @@ export type Database = {
           country: string
           session_start: string
           session_end: string
+          total_login_count: number
+          total_session_time_seconds: number
+          current_streak_days: number
+          longest_streak_days: number
+          last_lesson_completed: string
+          current_page: string
+          total_quiz_attempts: number
+          total_games_played: number
+          average_quiz_score: number
+          best_quiz_score: number
         }
         Insert: {
           username: string
@@ -50,6 +99,16 @@ export type Database = {
           country?: string
           session_start?: string
           session_end?: string
+          total_login_count?: number
+          total_session_time_seconds?: number
+          current_streak_days?: number
+          longest_streak_days?: number
+          last_lesson_completed?: string
+          current_page?: string
+          total_quiz_attempts?: number
+          total_games_played?: number
+          average_quiz_score?: number
+          best_quiz_score?: number
         }
         Update: {
           username?: string
@@ -63,6 +122,16 @@ export type Database = {
           country?: string
           session_start?: string
           session_end?: string
+          total_login_count?: number
+          total_session_time_seconds?: number
+          current_streak_days?: number
+          longest_streak_days?: number
+          last_lesson_completed?: string
+          current_page?: string
+          total_quiz_attempts?: number
+          total_games_played?: number
+          average_quiz_score?: number
+          best_quiz_score?: number
         }
       }
       lessons: {
@@ -114,6 +183,11 @@ export type Database = {
           completed: boolean
           score: number
           completed_at: string
+          attempt_count: number
+          time_spent_seconds: number
+          started_at: string
+          hints_used: number
+          difficulty_level: number
         }
         Insert: {
           id?: string
@@ -122,6 +196,11 @@ export type Database = {
           completed?: boolean
           score?: number
           completed_at?: string
+          attempt_count?: number
+          time_spent_seconds?: number
+          started_at?: string
+          hints_used?: number
+          difficulty_level?: number
         }
         Update: {
           id?: string
@@ -130,6 +209,105 @@ export type Database = {
           completed?: boolean
           score?: number
           completed_at?: string
+          attempt_count?: number
+          time_spent_seconds?: number
+          started_at?: string
+          hints_used?: number
+          difficulty_level?: number
+        }
+      }
+      user_activity_logs: {
+        Row: {
+          id: string
+          username: string
+          activity_type: string
+          activity_details: any
+          timestamp: string
+          session_id: string
+          ip_address: string
+          user_agent: string
+          page_url: string
+          duration_seconds: number
+          score: number
+          metadata: any
+        }
+        Insert: {
+          id?: string
+          username: string
+          activity_type: string
+          activity_details?: any
+          timestamp?: string
+          session_id?: string
+          ip_address?: string
+          user_agent?: string
+          page_url?: string
+          duration_seconds?: number
+          score?: number
+          metadata?: any
+        }
+        Update: {
+          id?: string
+          username?: string
+          activity_type?: string
+          activity_details?: any
+          timestamp?: string
+          session_id?: string
+          ip_address?: string
+          user_agent?: string
+          page_url?: string
+          duration_seconds?: number
+          score?: number
+          metadata?: any
+        }
+      }
+      user_sessions: {
+        Row: {
+          id: string
+          username: string
+          session_token: string
+          login_time: string
+          logout_time: string
+          last_activity: string
+          ip_address: string
+          user_agent: string
+          is_active: boolean
+          session_duration_seconds: number
+          pages_visited: number
+          lessons_completed: number
+          quizzes_taken: number
+          games_played: number
+        }
+        Insert: {
+          id?: string
+          username: string
+          session_token: string
+          login_time?: string
+          logout_time?: string
+          last_activity?: string
+          ip_address?: string
+          user_agent?: string
+          is_active?: boolean
+          session_duration_seconds?: number
+          pages_visited?: number
+          lessons_completed?: number
+          quizzes_taken?: number
+          games_played?: number
+        }
+        Update: {
+          id?: string
+          username?: string
+          session_token?: string
+          login_time?: string
+          logout_time?: string
+          last_activity?: string
+          ip_address?: string
+          user_agent?: string
+          is_active?: boolean
+          session_duration_seconds?: number
+          pages_visited?: number
+          lessons_completed?: number
+          quizzes_taken?: number
+          games_played?: number
         }
       }
     }
