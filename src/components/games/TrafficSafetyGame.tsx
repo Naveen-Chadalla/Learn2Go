@@ -118,7 +118,7 @@ const TrafficSafetyGame: React.FC<TrafficSafetyGameProps> = ({
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [showFailMessage, setShowFailMessage] = useState(false);
-  const [failMessage, setShowFailMessage] = useState('');
+  const [failMessage, setFailMessage] = useState('');
   
   // Detect mobile devices
   useEffect(() => {
