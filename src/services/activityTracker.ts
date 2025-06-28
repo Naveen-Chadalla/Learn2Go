@@ -91,13 +91,12 @@ export class ActivityTracker {
         .eq('username', this.username)
 
     } catch (err) {
-      console.error('Activity heartbeat failed:', err)
-      // Silently handle the error to prevent disrupting user experience
-      
-      // If it's a network error, we might want to pause tracking temporarily
+      // Handle network connectivity issues differently from other errors
       if (err instanceof TypeError && err.message.includes('Failed to fetch')) {
         console.warn('Network connectivity issue detected, pausing activity tracking temporarily')
         this.pauseTracking()
+      } else {
+        console.error('Activity heartbeat failed:', err)
       }
     }
   }
