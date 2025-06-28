@@ -19,7 +19,9 @@ import {
   Volume2,
   VolumeX,
   Gamepad2,
-  Sparkles
+  Sparkles,
+  Award,
+  Zap
 } from 'lucide-react'
 import Confetti from 'react-confetti'
 import DynamicTagline from '../../components/DynamicTagline'
@@ -42,6 +44,8 @@ const LessonDetail: React.FC = () => {
   const { data, updateUserProgress } = useData()
   const { trackLessonStart, trackLessonComplete, trackQuizAttempt, trackQuizComplete } = useActivityTracking()
   
+  // Lesson flow states
+  const [currentPhase, setCurrentPhase] = useState<'lesson' | 'quiz' | 'game' | 'complete'>('lesson')
   const [showQuiz, setShowQuiz] = useState(false)
   const [currentQuestion, setCurrentQuestion] = useState(0)
   const [selectedAnswers, setSelectedAnswers] = useState<number[]>([])
@@ -50,35 +54,53 @@ const LessonDetail: React.FC = () => {
   const [lessonStartTime, setLessonStartTime] = useState<number>(Date.now())
   const [quizStartTime, setQuizStartTime] = useState<number>(0)
   const [showGame, setShowGame] = useState(false)
+  const [gameCompleted, setGameCompleted] = useState(false)
+  const [gameScore, setGameScore] = useState(0)
   const [topicCompleted, setTopicCompleted] = useState(false)
   const [voiceEnabled, setVoiceEnabled] = useState(false)
   const [isReading, setIsReading] = useState(false)
+  const [lessonCompleted, setLessonCompleted] = useState(false)
 
   const lesson = data.lessons.find(l => l.id === id)
   const progress = data.userProgress.find(p => p.lesson_id === id)
   const { countryTheme } = data
 
-  // Get lesson images based on content
+  // Get lesson images based on content with better variety
   const getLessonImages = () => {
     const baseImages = [
       'https://images.pexels.com/photos/210182/pexels-photo-210182.jpeg?auto=compress&cs=tinysrgb&w=800',
       'https://images.pexels.com/photos/544966/pexels-photo-544966.jpeg?auto=compress&cs=tinysrgb&w=800',
-      'https://images.pexels.com/photos/1004409/pexels-photo-1004409.jpeg?auto=compress&cs=tinysrgb&w=800'
+      'https://images.pexels.com/photos/1004409/pexels-photo-1004409.jpeg?auto=compress&cs=tinysrgb&w=800',
+      'https://images.pexels.com/photos/2199293/pexels-photo-2199293.jpeg?auto=compress&cs=tinysrgb&w=800',
+      'https://images.pexels.com/photos/1563356/pexels-photo-1563356.jpeg?auto=compress&cs=tinysrgb&w=800',
+      'https://images.pexels.com/photos/2116475/pexels-photo-2116475.jpeg?auto=compress&cs=tinysrgb&w=800',
+      'https://images.pexels.com/photos/1738986/pexels-photo-1738986.jpeg?auto=compress&cs=tinysrgb&w=800'
     ]
     
     // Add more specific images based on lesson content
-    if (lesson?.title.toLowerCase().includes('traffic signals')) {
+    if (lesson?.title.toLowerCase().includes('traffic signals') || lesson?.title.toLowerCase().includes('traffic light')) {
       return [
         'https://images.pexels.com/photos/2199293/pexels-photo-2199293.jpeg?auto=compress&cs=tinysrgb&w=800',
         'https://images.pexels.com/photos/1563356/pexels-photo-1563356.jpeg?auto=compress&cs=tinysrgb&w=800',
+        'https://images.pexels.com/photos/2116475/pexels-photo-2116475.jpeg?auto=compress&cs=tinysrgb&w=800',
         ...baseImages
       ]
     }
     
-    if (lesson?.title.toLowerCase().includes('pedestrian')) {
+    if (lesson?.title.toLowerCase().includes('pedestrian') || lesson?.title.toLowerCase().includes('crosswalk')) {
       return [
         'https://images.pexels.com/photos/1004409/pexels-photo-1004409.jpeg?auto=compress&cs=tinysrgb&w=800',
+        'https://images.pexels.com/photos/1738986/pexels-photo-1738986.jpeg?auto=compress&cs=tinysrgb&w=800',
         'https://images.pexels.com/photos/2199293/pexels-photo-2199293.jpeg?auto=compress&cs=tinysrgb&w=800',
+        ...baseImages
+      ]
+    }
+
+    if (lesson?.title.toLowerCase().includes('emergency') || lesson?.title.toLowerCase().includes('accident')) {
+      return [
+        'https://images.pexels.com/photos/1738986/pexels-photo-1738986.jpeg?auto=compress&cs=tinysrgb&w=800',
+        'https://images.pexels.com/photos/2116475/pexels-photo-2116475.jpeg?auto=compress&cs=tinysrgb&w=800',
+        'https://images.pexels.com/photos/210182/pexels-photo-210182.jpeg?auto=compress&cs=tinysrgb&w=800',
         ...baseImages
       ]
     }
@@ -99,7 +121,22 @@ const LessonDetail: React.FC = () => {
       setLessonStartTime(Date.now())
       trackLessonStart(lesson.id, lesson.title)
     }
-  }, [lesson, navigate, user, trackLessonStart])
+
+    // Check if lesson was already completed
+    if (progress?.completed) {
+      setLessonCompleted(true)
+    }
+  }, [lesson, navigate, user, trackLessonStart, progress])
+
+  const handleLessonComplete = () => {
+    setLessonCompleted(true)
+    setCurrentPhase('quiz')
+    
+    // Auto-prompt for quiz after lesson completion
+    setTimeout(() => {
+      handleStartQuiz()
+    }, 1000)
+  }
 
   const handleStartQuiz = () => {
     setShowQuiz(true)
@@ -146,6 +183,7 @@ const LessonDetail: React.FC = () => {
     
     setQuizScore(score)
     setQuizCompleted(true)
+    setCurrentPhase('game')
 
     // Track quiz completion
     trackQuizComplete(lesson.id, score, quizTimeSpent, {
@@ -162,6 +200,13 @@ const LessonDetail: React.FC = () => {
     if (score >= 70) {
       const totalTimeSpent = Math.floor((Date.now() - lessonStartTime) / 1000)
       trackLessonComplete(lesson.id, lesson.title, totalTimeSpent)
+    }
+
+    // Auto-prompt for game after quiz completion (if passed)
+    if (score >= 70) {
+      setTimeout(() => {
+        handleStartGame()
+      }, 2000)
     }
   }
 
@@ -188,7 +233,15 @@ const LessonDetail: React.FC = () => {
 
   const handleGameComplete = (score: number) => {
     setShowGame(false)
+    setGameCompleted(true)
+    setGameScore(score)
+    setCurrentPhase('complete')
     setTopicCompleted(true)
+
+    // Auto-suggest next lesson after game completion
+    setTimeout(() => {
+      handleContinueToNext()
+    }, 3000)
   }
 
   const handleContinueToNext = () => {
@@ -198,7 +251,13 @@ const LessonDetail: React.FC = () => {
       const nextLesson = data.lessons[currentIndex + 1]
       navigate(`/lessons/${nextLesson.id}`)
     } else {
-      navigate('/dashboard')
+      // No more lessons, go to dashboard with celebration
+      navigate('/dashboard', { 
+        state: { 
+          message: 'Congratulations! You have completed all available lessons!',
+          celebration: true
+        }
+      })
     }
   }
 
@@ -236,7 +295,7 @@ const LessonDetail: React.FC = () => {
       )}
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
+        {/* Header with Progress Indicator */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -252,6 +311,57 @@ const LessonDetail: React.FC = () => {
             <ArrowLeft className="h-5 w-5" />
             <span className="font-medium">{t('common.back')}</span>
           </motion.button>
+          
+          {/* Progress Flow Indicator */}
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
+                currentPhase === 'lesson' || lessonCompleted ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-600'
+              }`}>
+                {lessonCompleted ? <CheckCircle className="h-5 w-5" /> : <BookOpen className="h-5 w-5" />}
+              </div>
+              <span className="text-sm font-medium">Lesson</span>
+            </div>
+            
+            <div className={`w-8 h-1 rounded transition-all duration-300 ${
+              currentPhase === 'quiz' || quizCompleted ? 'bg-blue-500' : 'bg-gray-200'
+            }`}></div>
+            
+            <div className="flex items-center space-x-2">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
+                currentPhase === 'quiz' || quizCompleted ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'
+              }`}>
+                {quizCompleted ? <CheckCircle className="h-5 w-5" /> : <Brain className="h-5 w-5" />}
+              </div>
+              <span className="text-sm font-medium">Quiz</span>
+            </div>
+            
+            <div className={`w-8 h-1 rounded transition-all duration-300 ${
+              currentPhase === 'game' || gameCompleted ? 'bg-purple-500' : 'bg-gray-200'
+            }`}></div>
+            
+            <div className="flex items-center space-x-2">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
+                currentPhase === 'game' || gameCompleted ? 'bg-purple-500 text-white' : 'bg-gray-200 text-gray-600'
+              }`}>
+                {gameCompleted ? <CheckCircle className="h-5 w-5" /> : <Gamepad2 className="h-5 w-5" />}
+              </div>
+              <span className="text-sm font-medium">Game</span>
+            </div>
+            
+            <div className={`w-8 h-1 rounded transition-all duration-300 ${
+              currentPhase === 'complete' ? 'bg-green-500' : 'bg-gray-200'
+            }`}></div>
+            
+            <div className="flex items-center space-x-2">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
+                currentPhase === 'complete' ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-600'
+              }`}>
+                <Trophy className="h-5 w-5" />
+              </div>
+              <span className="text-sm font-medium">Complete</span>
+            </div>
+          </div>
           
           <div className="flex items-center space-x-4">
             <motion.div 
@@ -308,10 +418,24 @@ const LessonDetail: React.FC = () => {
                 >
                   🎉
                 </motion.div>
-                <h2 className="text-3xl font-bold text-gray-900 mb-4">Topic Complete!</h2>
-                <p className="text-gray-600 mb-6 leading-relaxed">
-                  Congratulations! You've successfully completed the lesson, quiz, and interactive game for this topic.
+                <h2 className="text-3xl font-bold text-gray-900 mb-4">Complete Learning Journey!</h2>
+                <p className="text-gray-600 mb-4 leading-relaxed">
+                  Amazing work! You've successfully completed:
                 </p>
+                <div className="space-y-2 mb-6">
+                  <div className="flex items-center justify-center space-x-2 text-green-600">
+                    <CheckCircle className="h-5 w-5" />
+                    <span>Lesson: {lesson.title}</span>
+                  </div>
+                  <div className="flex items-center justify-center space-x-2 text-blue-600">
+                    <CheckCircle className="h-5 w-5" />
+                    <span>Quiz Score: {quizScore}%</span>
+                  </div>
+                  <div className="flex items-center justify-center space-x-2 text-purple-600">
+                    <CheckCircle className="h-5 w-5" />
+                    <span>Game Score: {gameScore}%</span>
+                  </div>
+                </div>
                 <motion.button
                   onClick={handleContinueToNext}
                   whileHover={{ scale: 1.05, y: -2 }}
@@ -319,7 +443,7 @@ const LessonDetail: React.FC = () => {
                   className="w-full text-white px-6 py-3 rounded-2xl transition-all duration-200 shadow-xl hover:shadow-2xl flex items-center justify-center space-x-2 font-bold"
                   style={{ background: `linear-gradient(135deg, ${countryTheme.primaryColor}, ${countryTheme.secondaryColor})` }}
                 >
-                  <span>Continue to Next Topic</span>
+                  <span>Continue to Next Lesson</span>
                   <ArrowRight className="h-5 w-5" />
                 </motion.button>
               </motion.div>
@@ -369,7 +493,7 @@ const LessonDetail: React.FC = () => {
                 />
               </motion.div>
 
-              {/* Lesson Images */}
+              {/* Lesson Images - Enhanced with better layout */}
               <div className="grid md:grid-cols-2 gap-6 mb-8">
                 {lessonImages.slice(0, 2).map((image, index) => (
                   <motion.div
@@ -384,8 +508,12 @@ const LessonDetail: React.FC = () => {
                       src={image}
                       alt={`Traffic safety illustration ${index + 1}`}
                       className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-105"
+                      loading="lazy"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+                    <div className="absolute bottom-4 left-4 text-white text-sm font-medium bg-black/30 backdrop-blur-sm rounded-lg px-3 py-1">
+                      Safety Illustration {index + 1}
+                    </div>
                   </motion.div>
                 ))}
               </div>
@@ -396,22 +524,31 @@ const LessonDetail: React.FC = () => {
                 </div>
               </div>
 
-              {/* Additional Image */}
-              {lessonImages[2] && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.6 }}
-                  whileHover={{ scale: 1.02, y: -4 }}
-                  className="mt-8 rounded-3xl overflow-hidden shadow-xl group"
-                >
-                  <img
-                    src={lessonImages[2]}
-                    alt="Traffic safety concept"
-                    className="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-105"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
-                </motion.div>
+              {/* Additional Images */}
+              {lessonImages.slice(2, 4).length > 0 && (
+                <div className="mt-8 grid md:grid-cols-2 gap-6">
+                  {lessonImages.slice(2, 4).map((image, index) => (
+                    <motion.div
+                      key={index + 2}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.6 + index * 0.1 }}
+                      whileHover={{ scale: 1.02, y: -4 }}
+                      className="relative rounded-3xl overflow-hidden shadow-xl group"
+                    >
+                      <img
+                        src={image}
+                        alt={`Traffic safety concept ${index + 3}`}
+                        className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-105"
+                        loading="lazy"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+                      <div className="absolute bottom-4 left-4 text-white text-sm font-medium bg-black/30 backdrop-blur-sm rounded-lg px-3 py-1">
+                        Safety Concept {index + 3}
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
               )}
 
               {/* Lesson Stats */}
@@ -459,54 +596,90 @@ const LessonDetail: React.FC = () => {
               </motion.div>
             </motion.div>
 
-            {/* Ready to Test Prompt */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.3 }}
-              className="bg-gradient-to-r from-blue-50 to-green-50 rounded-3xl p-8 border-2 border-blue-200 mb-8 shadow-xl"
-            >
-              <div className="text-center">
+            {/* Lesson Complete Button */}
+            {!lessonCompleted && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.3 }}
+                className="bg-gradient-to-r from-blue-50 to-green-50 rounded-3xl p-8 border-2 border-blue-200 mb-8 shadow-xl text-center"
+              >
                 <motion.div
                   animate={{ scale: [1, 1.1, 1] }}
                   transition={{ duration: 2, repeat: Infinity }}
                   className="text-5xl mb-4"
                 >
-                  🧠
+                  📚
                 </motion.div>
-                <h2 className="text-3xl font-bold text-gray-900 mb-4">Ready to test your knowledge?</h2>
+                <h2 className="text-3xl font-bold text-gray-900 mb-4">Lesson Complete!</h2>
                 <p className="text-gray-600 mb-6 text-lg leading-relaxed">
-                  Great job completing the lesson! Now let's see how well you understood the concepts with our interactive quiz.
+                  Great job reading through the lesson! Now let's test your understanding with our interactive quiz.
                 </p>
 
-                {progress?.completed && (
-                  <motion.div 
-                    className="bg-green-50 border border-green-200 rounded-2xl p-4 mb-6"
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.2 }}
-                  >
-                    <div className="flex items-center justify-center space-x-2">
-                      <Trophy className="h-5 w-5 text-green-600" />
-                      <span className="font-bold text-green-800">
-                        Previous Score: {progress.score}%
-                      </span>
-                    </div>
-                  </motion.div>
-                )}
-
                 <motion.button
-                  onClick={handleStartQuiz}
+                  onClick={handleLessonComplete}
                   whileHover={{ scale: 1.05, y: -2 }}
                   whileTap={{ scale: 0.95 }}
                   className="text-white px-8 py-3 rounded-2xl transition-all duration-200 shadow-xl hover:shadow-2xl flex items-center space-x-2 font-bold mx-auto text-lg"
                   style={{ background: `linear-gradient(135deg, ${countryTheme.primaryColor}, ${countryTheme.secondaryColor})` }}
                 >
-                  <PlayCircle className="h-5 w-5" />
-                  <span>{progress?.completed ? t('quiz.retake') : 'Start Safety Quiz'}</span>
+                  <Award className="h-5 w-5" />
+                  <span>Complete Lesson & Start Quiz</span>
+                  <ArrowRight className="h-5 w-5" />
                 </motion.button>
-              </div>
-            </motion.div>
+              </motion.div>
+            )}
+
+            {/* Ready to Test Prompt */}
+            {lessonCompleted && !showQuiz && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.3 }}
+                className="bg-gradient-to-r from-blue-50 to-green-50 rounded-3xl p-8 border-2 border-blue-200 mb-8 shadow-xl"
+              >
+                <div className="text-center">
+                  <motion.div
+                    animate={{ scale: [1, 1.1, 1] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                    className="text-5xl mb-4"
+                  >
+                    🧠
+                  </motion.div>
+                  <h2 className="text-3xl font-bold text-gray-900 mb-4">Ready to test your knowledge?</h2>
+                  <p className="text-gray-600 mb-6 text-lg leading-relaxed">
+                    Excellent! You've completed the lesson. Now let's see how well you understood the concepts with our interactive quiz.
+                  </p>
+
+                  {progress?.completed && (
+                    <motion.div 
+                      className="bg-green-50 border border-green-200 rounded-2xl p-4 mb-6"
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: 0.2 }}
+                    >
+                      <div className="flex items-center justify-center space-x-2">
+                        <Trophy className="h-5 w-5 text-green-600" />
+                        <span className="font-bold text-green-800">
+                          Previous Score: {progress.score}%
+                        </span>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  <motion.button
+                    onClick={handleStartQuiz}
+                    whileHover={{ scale: 1.05, y: -2 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="text-white px-8 py-3 rounded-2xl transition-all duration-200 shadow-xl hover:shadow-2xl flex items-center space-x-2 font-bold mx-auto text-lg"
+                    style={{ background: `linear-gradient(135deg, ${countryTheme.primaryColor}, ${countryTheme.secondaryColor})` }}
+                  >
+                    <PlayCircle className="h-5 w-5" />
+                    <span>{progress?.completed ? t('quiz.retake') : 'Start Safety Quiz'}</span>
+                  </motion.button>
+                </div>
+              </motion.div>
+            )}
           </>
         ) : showQuiz && !showGame ? (
           /* Quiz Interface */

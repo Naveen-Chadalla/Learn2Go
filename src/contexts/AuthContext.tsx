@@ -48,12 +48,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }))
   }, [])
 
-  // Clear session data completely with user-specific isolation
+  // Enhanced session isolation - clear data with user-specific namespacing
   const clearSessionData = useCallback((specificUser?: string) => {
+    const sessionId = Date.now().toString()
+    
     if (specificUser) {
-      // Clear only data for specific user
+      // Clear only data for specific user with enhanced isolation
       const userPrefix = `learn2go-${specificUser}-`
       const keysToRemove = []
+      
+      // Clear localStorage for this user
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i)
         if (key && key.startsWith(userPrefix)) {
@@ -62,7 +66,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       keysToRemove.forEach(key => localStorage.removeItem(key))
       
-      // Clear session storage for this user
+      // Clear sessionStorage for this user
       const sessionKeys = []
       for (let i = 0; i < sessionStorage.length; i++) {
         const key = sessionStorage.key(i)
@@ -71,13 +75,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
       sessionKeys.forEach(key => sessionStorage.removeItem(key))
+      
+      // Clear any cached data for this user
+      const cacheKeys = []
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i)
+        if (key && (key.includes(specificUser) || key.includes(`user_${specificUser}`))) {
+          cacheKeys.push(key)
+        }
+      }
+      cacheKeys.forEach(key => localStorage.removeItem(key))
+      
+      console.log(`[AUTH] Cleared session data for user: ${specificUser}`)
     } else {
       // Clear all session data
       sessionStorage.clear()
-      localStorage.removeItem('learn2go-session')
-      localStorage.removeItem('learn2go-user')
       
-      // Clear any other app-specific storage
+      // Clear only Learn2Go related localStorage items
       const keysToRemove = []
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i)
@@ -86,31 +100,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
       keysToRemove.forEach(key => localStorage.removeItem(key))
+      
+      console.log('[AUTH] Cleared all session data')
     }
+    
+    // Set session isolation marker
+    sessionStorage.setItem('learn2go-session-id', sessionId)
   }, [])
 
+  // Enhanced user profile sync with session isolation
   const syncUserProfile = useCallback(async (authUser: User) => {
     try {
       const username = (authUser.user_metadata?.username || authUser.email!.split('@')[0]).toLowerCase()
       const email = authUser.email!
       const country = authUser.user_metadata?.country || 'US'
       const language = authUser.user_metadata?.language || 'en'
+      const sessionId = sessionStorage.getItem('learn2go-session-id') || Date.now().toString()
 
-      // Store user-specific session data
-      const userSessionKey = `learn2go-${username}-session`
+      // Store user-specific session data with enhanced isolation
+      const userSessionKey = `learn2go-${username}-session-${sessionId}`
       const userDataKey = `learn2go-${username}-data`
+      const userCacheKey = `learn2go-${username}-cache`
       
+      // Clear any existing session data for this user first
+      clearSessionData(username)
+      
+      // Set new session data
       sessionStorage.setItem(userSessionKey, JSON.stringify({
         username,
         email,
-        timestamp: Date.now()
+        sessionId,
+        timestamp: Date.now(),
+        isolated: true
       }))
       
       localStorage.setItem(userDataKey, JSON.stringify({
         username,
         country,
         language,
-        lastLogin: new Date().toISOString()
+        lastLogin: new Date().toISOString(),
+        sessionId
+      }))
+      
+      // Initialize user cache
+      localStorage.setItem(userCacheKey, JSON.stringify({
+        lessons: [],
+        progress: [],
+        lastUpdated: new Date().toISOString()
       }))
 
       // Check if user profile exists
@@ -120,25 +156,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .eq('username', username)
         .maybeSingle()
 
-      if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is "not found" which is expected
+      if (checkError && checkError.code !== 'PGRST116') {
         logDebugInfo('Error checking existing user profile', checkError)
         return
       }
 
       if (existingUser) {
-        // Update existing profile
+        // Update existing profile with session tracking
         const { error: updateError } = await supabase
           .from('users')
           .update({
             last_active: new Date().toISOString(),
             session_start: new Date().toISOString(),
+            current_page: window.location.pathname,
+            total_login_count: existingUser.total_login_count ? existingUser.total_login_count + 1 : 1
           })
           .eq('username', username)
 
         if (updateError) {
           logDebugInfo('Error updating user profile', updateError)
         } else {
-          logDebugInfo('User profile updated successfully')
+          logDebugInfo('User profile updated successfully with session isolation')
         }
       } else {
         // Create new profile
@@ -151,40 +189,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             language,
             last_active: new Date().toISOString(),
             session_start: new Date().toISOString(),
+            current_page: window.location.pathname,
+            total_login_count: 1
           })
 
         if (insertError) {
           logDebugInfo('Error creating user profile', insertError)
         } else {
-          logDebugInfo('User profile created successfully')
+          logDebugInfo('User profile created successfully with session isolation')
         }
       }
     } catch (error) {
       logDebugInfo('Exception during user profile sync', error)
     }
-  }, [logDebugInfo])
-
-  const updateUserActivity = useCallback(async (authUser: User) => {
-    try {
-      const username = (authUser.user_metadata?.username || authUser.email!.split('@')[0]).toLowerCase()
-      
-      const { error } = await supabase
-        .from('users')
-        .upsert({
-          username,
-          email: authUser.email!,
-          country: authUser.user_metadata?.country || 'US',
-          language: authUser.user_metadata?.language || 'en',
-          last_active: new Date().toISOString(),
-        })
-
-      if (error) {
-        logDebugInfo('Error updating user activity', error)
-      }
-    } catch (error) {
-      logDebugInfo('Exception during user activity update', error)
-    }
-  }, [logDebugInfo])
+  }, [logDebugInfo, clearSessionData])
 
   const checkUsernameAvailability = useCallback(async (username: string): Promise<{ available: boolean; message: string }> => {
     const normalizedUsername = username.toLowerCase().trim()
@@ -208,18 +226,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .eq('username', normalizedUsername)
         .maybeSingle()
 
-      // If data exists, username is taken
       if (data) {
         return { available: false, message: 'Username is already taken' }
       }
 
-      // If there's an error, it's a real failure
-      if (error) {
+      if (error && error.code !== 'PGRST116') {
         logDebugInfo('Username availability check failed', error)
         return { available: false, message: 'Error checking username availability' }
       }
 
-      // If both data and error are null, username is available
       return { available: true, message: 'Username is available!' }
     } catch (error) {
       logDebugInfo('Username availability check failed', error)
@@ -227,13 +242,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [logDebugInfo])
 
-  // Initialize auth state
+  // Initialize auth state with enhanced session isolation
   useEffect(() => {
     let mounted = true
 
     const initializeAuth = async () => {
       try {
-        logDebugInfo('Starting auth initialization')
+        logDebugInfo('Starting auth initialization with session isolation')
         
         const { data: { session }, error } = await supabase.auth.getSession()
         
@@ -245,7 +260,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         if (session?.user) {
-          logDebugInfo('Session found', { username: session.user.user_metadata?.username })
+          logDebugInfo('Session found with isolation', { username: session.user.user_metadata?.username })
           setSession(session)
           setUser(session.user)
           syncUserProfile(session.user).catch(console.warn)
@@ -275,11 +290,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     initializeAuth()
 
-    // Auth state listener
+    // Auth state listener with session isolation
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return
 
-      logDebugInfo(`Auth state changed: ${event}`)
+      logDebugInfo(`Auth state changed with isolation: ${event}`)
       
       setDebugInfo(prev => ({
         ...prev,
@@ -293,14 +308,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (event === 'SIGNED_OUT') {
-        logDebugInfo('User signed out')
+        const currentUsername = user?.user_metadata?.username || user?.email?.split('@')[0]
+        logDebugInfo('User signed out with session isolation')
         setSession(null)
         setUser(null)
-        clearSessionData()
+        clearSessionData(currentUsername)
       }
 
       if (event === 'TOKEN_REFRESHED' && session?.user) {
-        logDebugInfo('Token refreshed')
+        logDebugInfo('Token refreshed with session isolation')
         setSession(session)
         setUser(session.user)
       }
@@ -311,22 +327,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       mounted = false
       subscription.unsubscribe()
-      logDebugInfo('Auth provider cleanup completed')
+      logDebugInfo('Auth provider cleanup completed with session isolation')
     }
-  }, [logDebugInfo, clearSessionData, syncUserProfile])
+  }, [logDebugInfo, clearSessionData, syncUserProfile, user])
 
   const signIn = async (username: string) => {
     try {
       const normalizedUsername = username.toLowerCase().trim()
-      logDebugInfo(`Attempting sign in for username: ${normalizedUsername}`)
+      logDebugInfo(`Attempting sign in with session isolation for username: ${normalizedUsername}`)
       
-      // Clear any existing session data
+      // Clear any existing session data before new login
       clearSessionData()
       
       const tempEmail = `${normalizedUsername}@learn2go.local`
       const tempPassword = `${normalizedUsername}_temp_pass_123`
       
-      // Attempt authentication with Supabase Auth first
       const { data, error } = await supabase.auth.signInWithPassword({ 
         email: tempEmail, 
         password: tempPassword 
@@ -335,7 +350,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) {
         logDebugInfo('Sign in error', error)
         
-        // Enhanced error handling with updated error codes
         if (error.message?.toLowerCase().includes('invalid login credentials') ||
             error.message?.toLowerCase().includes('invalid_credentials') ||
             error.code === 'invalid_credentials' ||
@@ -345,26 +359,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             error: { 
               message: 'Invalid username or the account may not exist. Please check your username or sign up for a new account.',
               code: 'invalid_credentials'
-            } 
-          }
-        }
-        
-        if (error.message?.toLowerCase().includes('email not confirmed')) {
-          return { 
-            data: null, 
-            error: { 
-              message: 'Please verify your email address before signing in.',
-              code: 'email_not_confirmed'
-            } 
-          }
-        }
-
-        if (error.message?.toLowerCase().includes('too many requests')) {
-          return { 
-            data: null, 
-            error: { 
-              message: 'Too many login attempts. Please try again later.',
-              code: 'rate_limit'
             } 
           }
         }
@@ -379,11 +373,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (data?.user) {
-        logDebugInfo('Sign in successful', { username: normalizedUsername })
-        
-        // Sync user profile after successful authentication
+        logDebugInfo('Sign in successful with session isolation', { username: normalizedUsername })
         await syncUserProfile(data.user)
-        
         return { data, error: null }
       }
 
@@ -397,17 +388,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     } catch (error: any) {
       logDebugInfo('Exception during sign in', error)
-      
-      if (error.name === 'NetworkError' || error.message?.includes('fetch')) {
-        return { 
-          data: null, 
-          error: { 
-            message: 'Network error. Please check your connection and try again.',
-            code: 'network_error'
-          } 
-        }
-      }
-      
       return { 
         data: null, 
         error: { 
@@ -421,7 +401,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signUp = async (username: string, country: string, language: string) => {
     try {
       const normalizedUsername = username.toLowerCase().trim()
-      logDebugInfo(`Attempting sign up for username: ${normalizedUsername}`)
+      logDebugInfo(`Attempting sign up with session isolation for username: ${normalizedUsername}`)
       
       // Clear any existing session data
       clearSessionData()
@@ -443,24 +423,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             country: country,
             language: language,
           },
-          emailRedirectTo: undefined // Disable email confirmation
+          emailRedirectTo: undefined
         }
       })
 
       if (error) {
         logDebugInfo('Sign up error', error)
-        
-        // Handle specific signup errors
-        if (error.message?.toLowerCase().includes('user already registered')) {
-          return { 
-            data: null, 
-            error: { 
-              message: 'This username is already registered. Please try signing in instead.',
-              code: 'user_exists'
-            } 
-          }
-        }
-        
         return { 
           data: null, 
           error: { 
@@ -471,7 +439,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (data.user) {
-        logDebugInfo('Creating user profile in database')
+        logDebugInfo('Creating user profile in database with session isolation')
         const { error: profileError } = await supabase.from('users').insert({
           username: normalizedUsername,
           email: tempEmail,
@@ -481,12 +449,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (profileError) {
           logDebugInfo('Error creating user profile', profileError)
-          // Don't fail the signup if profile creation fails, but log it
         }
         
-        logDebugInfo('Sign up successful', { username: normalizedUsername })
+        logDebugInfo('Sign up successful with session isolation', { username: normalizedUsername })
         
-        // Return success with redirect flag
         return { 
           data: { 
             ...data, 
@@ -511,15 +477,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async (): Promise<{ success: boolean; error?: string }> => {
     try {
-      logDebugInfo('Starting secure logout')
+      logDebugInfo('Starting secure logout with session isolation')
       
       const currentUsername = user?.user_metadata?.username || user?.email?.split('@')[0]
+      
+      // Update user's session end time
+      if (currentUsername) {
+        try {
+          await supabase
+            .from('users')
+            .update({ 
+              session_end: new Date().toISOString(),
+              current_page: 'offline'
+            })
+            .eq('username', currentUsername)
+        } catch (error) {
+          console.warn('[AUTH] Failed to update session end time:', error)
+        }
+      }
       
       // Clear state immediately
       setSession(null)
       setUser(null)
       
-      // Clear user-specific session data
+      // Clear user-specific session data with enhanced isolation
       if (currentUsername) {
         clearSessionData(currentUsername)
       } else {
@@ -529,7 +510,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Background cleanup (non-blocking)
       supabase.auth.signOut().catch(console.warn)
       
-      logDebugInfo('Secure logout completed')
+      logDebugInfo('Secure logout completed with session isolation')
       return { success: true }
       
     } catch (error) {
