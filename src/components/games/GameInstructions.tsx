@@ -95,7 +95,7 @@ const GameInstructions: React.FC<GameInstructionsProps> = ({ gameType, onClose }
           tips: [
             'Watch for speed limit signs at the start of each segment',
             'Slow down in school zones and residential areas',
-            'Speed cameras will flash if you're speeding when you pass them',
+            'Speed cameras will flash if you\'re speeding when you pass them',
             'Maintain a steady speed close to the limit for best efficiency'
           ]
         }
