@@ -2,7 +2,7 @@ import React, { useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { motion } from 'framer-motion'
-import { AlertCircle } from 'lucide-react'
+import { AlertCircle, Loader } from 'lucide-react'
 
 interface AuthRedirectProps {
   children: React.ReactNode
@@ -52,12 +52,16 @@ const AuthRedirect: React.FC<AuthRedirectProps> = ({ children }) => {
     }
   }, [isAuthenticated, loading, location.pathname, navigate, user])
 
-  // SIMPLIFIED loading screen - no blinking
+  // Simple loading screen
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+            className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4"
+          />
           <p className="text-gray-600">Loading...</p>
         </div>
       </div>
@@ -78,7 +82,7 @@ const AuthRedirect: React.FC<AuthRedirectProps> = ({ children }) => {
           animate={{ opacity: 1, y: 0 }}
           className="max-w-md w-full mx-4 text-center"
         >
-          <div className="bg-white rounded-2xl shadow-xl p-8 border border-red-100">
+          <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
             <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-gray-900 mb-4">Authentication Required</h2>
             <p className="text-gray-600 mb-6">Please log in to access this page.</p>

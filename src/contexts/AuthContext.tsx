@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { User, Session } from '@supabase/supabase-js'
-import { supabase } from '../lib/supabase'
+import { supabase, isSupabaseConfigured } from '../lib/supabase'
 
 interface AuthContextType {
   user: User | null
@@ -48,16 +48,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }))
   }, [])
 
-  // Enhanced session isolation - clear data with user-specific namespacing
+  // Clear session data with user isolation
   const clearSessionData = useCallback((specificUser?: string) => {
     const sessionId = Date.now().toString()
     
     if (specificUser) {
-      // Clear only data for specific user with enhanced isolation
       const userPrefix = `learn2go-${specificUser}-`
       const keysToRemove = []
       
-      // Clear localStorage for this user
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i)
         if (key && key.startsWith(userPrefix)) {
@@ -66,7 +64,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       keysToRemove.forEach(key => localStorage.removeItem(key))
       
-      // Clear sessionStorage for this user
       const sessionKeys = []
       for (let i = 0; i < sessionStorage.length; i++) {
         const key = sessionStorage.key(i)
@@ -75,23 +72,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
       sessionKeys.forEach(key => sessionStorage.removeItem(key))
-      
-      // Clear any cached data for this user
-      const cacheKeys = []
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i)
-        if (key && (key.includes(specificUser) || key.includes(`user_${specificUser}`))) {
-          cacheKeys.push(key)
-        }
-      }
-      cacheKeys.forEach(key => localStorage.removeItem(key))
-      
-      console.log(`[AUTH] Cleared session data for user: ${specificUser}`)
     } else {
-      // Clear all session data
       sessionStorage.clear()
-      
-      // Clear only Learn2Go related localStorage items
       const keysToRemove = []
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i)
@@ -100,109 +82,93 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
       keysToRemove.forEach(key => localStorage.removeItem(key))
-      
-      console.log('[AUTH] Cleared all session data')
     }
     
-    // Set session isolation marker
     sessionStorage.setItem('learn2go-session-id', sessionId)
   }, [])
 
-  // Enhanced user profile sync with session isolation
-  const syncUserProfile = useCallback(async (authUser: User) => {
-    try {
-      const username = (authUser.user_metadata?.username || authUser.email!.split('@')[0]).toLowerCase()
-      const email = authUser.email!
-      const country = authUser.user_metadata?.country || 'US'
-      const language = authUser.user_metadata?.language || 'en'
-      const sessionId = sessionStorage.getItem('learn2go-session-id') || Date.now().toString()
+  // Demo mode authentication for when Supabase is not configured
+  const demoSignIn = useCallback(async (username: string) => {
+    const normalizedUsername = username.toLowerCase().trim()
+    
+    // Create a demo user object
+    const demoUser = {
+      id: `demo-${normalizedUsername}`,
+      email: `${normalizedUsername}@learn2go.demo`,
+      user_metadata: {
+        username: normalizedUsername,
+        country: 'US',
+        language: 'en'
+      },
+      created_at: new Date().toISOString()
+    } as User
 
-      // Store user-specific session data with enhanced isolation
-      const userSessionKey = `learn2go-${username}-session-${sessionId}`
-      const userDataKey = `learn2go-${username}-data`
-      const userCacheKey = `learn2go-${username}-cache`
-      
-      // Clear any existing session data for this user first
-      clearSessionData(username)
-      
-      // Set new session data
-      sessionStorage.setItem(userSessionKey, JSON.stringify({
-        username,
-        email,
-        sessionId,
-        timestamp: Date.now(),
-        isolated: true
-      }))
-      
-      localStorage.setItem(userDataKey, JSON.stringify({
-        username,
-        country,
-        language,
-        lastLogin: new Date().toISOString(),
-        sessionId
-      }))
-      
-      // Initialize user cache
-      localStorage.setItem(userCacheKey, JSON.stringify({
-        lessons: [],
-        progress: [],
-        lastUpdated: new Date().toISOString()
-      }))
+    const demoSession = {
+      user: demoUser,
+      access_token: 'demo-token',
+      refresh_token: 'demo-refresh',
+      expires_in: 3600,
+      token_type: 'bearer'
+    } as Session
 
-      // Check if user profile exists
-      const { data: existingUser, error: checkError } = await supabase
-        .from('users')
-        .select('username, email')
-        .eq('username', username)
-        .maybeSingle()
+    setUser(demoUser)
+    setSession(demoSession)
+    
+    // Store demo session
+    localStorage.setItem(`learn2go-${normalizedUsername}-demo`, JSON.stringify({
+      user: demoUser,
+      session: demoSession,
+      timestamp: Date.now()
+    }))
 
-      if (checkError && checkError.code !== 'PGRST116') {
-        logDebugInfo('Error checking existing user profile', checkError)
-        return
+    return { data: { user: demoUser, session: demoSession }, error: null }
+  }, [])
+
+  const demoSignUp = useCallback(async (username: string, country: string, language: string) => {
+    const normalizedUsername = username.toLowerCase().trim()
+    
+    // Check if demo user already exists
+    const existingDemo = localStorage.getItem(`learn2go-${normalizedUsername}-demo`)
+    if (existingDemo) {
+      return { 
+        data: null, 
+        error: { 
+          message: 'Username already exists in demo mode. Try signing in instead.',
+          code: 'user_exists'
+        } 
       }
-
-      if (existingUser) {
-        // Update existing profile with session tracking
-        const { error: updateError } = await supabase
-          .from('users')
-          .update({
-            last_active: new Date().toISOString(),
-            session_start: new Date().toISOString(),
-            current_page: window.location.pathname,
-            total_login_count: existingUser.total_login_count ? existingUser.total_login_count + 1 : 1
-          })
-          .eq('username', username)
-
-        if (updateError) {
-          logDebugInfo('Error updating user profile', updateError)
-        } else {
-          logDebugInfo('User profile updated successfully with session isolation')
-        }
-      } else {
-        // Create new profile
-        const { error: insertError } = await supabase
-          .from('users')
-          .insert({
-            username,
-            email,
-            country,
-            language,
-            last_active: new Date().toISOString(),
-            session_start: new Date().toISOString(),
-            current_page: window.location.pathname,
-            total_login_count: 1
-          })
-
-        if (insertError) {
-          logDebugInfo('Error creating user profile', insertError)
-        } else {
-          logDebugInfo('User profile created successfully with session isolation')
-        }
-      }
-    } catch (error) {
-      logDebugInfo('Exception during user profile sync', error)
     }
-  }, [logDebugInfo, clearSessionData])
+
+    const demoUser = {
+      id: `demo-${normalizedUsername}`,
+      email: `${normalizedUsername}@learn2go.demo`,
+      user_metadata: {
+        username: normalizedUsername,
+        country,
+        language
+      },
+      created_at: new Date().toISOString()
+    } as User
+
+    const demoSession = {
+      user: demoUser,
+      access_token: 'demo-token',
+      refresh_token: 'demo-refresh',
+      expires_in: 3600,
+      token_type: 'bearer'
+    } as Session
+
+    setUser(demoUser)
+    setSession(demoSession)
+    
+    localStorage.setItem(`learn2go-${normalizedUsername}-demo`, JSON.stringify({
+      user: demoUser,
+      session: demoSession,
+      timestamp: Date.now()
+    }))
+
+    return { data: { user: demoUser, session: demoSession }, error: null }
+  }, [])
 
   const checkUsernameAvailability = useCallback(async (username: string): Promise<{ available: boolean; message: string }> => {
     const normalizedUsername = username.toLowerCase().trim()
@@ -217,6 +183,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (!/^[a-zA-Z0-9_]+$/.test(normalizedUsername)) {
       return { available: false, message: 'Username can only contain letters, numbers, and underscores' }
+    }
+
+    if (!isSupabaseConfigured) {
+      // Demo mode - check localStorage
+      const existingDemo = localStorage.getItem(`learn2go-${normalizedUsername}-demo`)
+      if (existingDemo) {
+        return { available: false, message: 'Username is already taken' }
+      }
+      return { available: true, message: 'Username is available!' }
     }
 
     try {
@@ -242,14 +217,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [logDebugInfo])
 
-  // Initialize auth state with enhanced session isolation
+  // Initialize auth state
   useEffect(() => {
     let mounted = true
 
     const initializeAuth = async () => {
       try {
-        logDebugInfo('Starting auth initialization with session isolation')
+        logDebugInfo('Starting auth initialization')
         
+        if (!isSupabaseConfigured) {
+          logDebugInfo('Running in demo mode - Supabase not configured')
+          setLoading(false)
+          return
+        }
+
         const { data: { session }, error } = await supabase.auth.getSession()
         
         if (!mounted) return
@@ -260,10 +241,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         if (session?.user) {
-          logDebugInfo('Session found with isolation', { username: session.user.user_metadata?.username })
+          logDebugInfo('Session found', { username: session.user.user_metadata?.username })
           setSession(session)
           setUser(session.user)
-          syncUserProfile(session.user).catch(console.warn)
         } else {
           logDebugInfo('No session found')
           setSession(null)
@@ -279,65 +259,70 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       } finally {
         if (mounted) {
-          setTimeout(() => {
-            if (mounted) {
-              setLoading(false)
-            }
-          }, 100)
+          setLoading(false)
         }
       }
     }
 
     initializeAuth()
 
-    // Auth state listener with session isolation
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!mounted) return
+    // Only set up auth listener if Supabase is configured
+    if (isSupabaseConfigured) {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (!mounted) return
 
-      logDebugInfo(`Auth state changed with isolation: ${event}`)
-      
-      setDebugInfo(prev => ({
-        ...prev,
-        authStateChanges: prev.authStateChanges + 1
-      }))
+        logDebugInfo(`Auth state changed: ${event}`)
+        
+        setDebugInfo(prev => ({
+          ...prev,
+          authStateChanges: prev.authStateChanges + 1
+        }))
 
-      if (event === 'SIGNED_IN' && session?.user) {
-        setSession(session)
-        setUser(session.user)
-        syncUserProfile(session.user).catch(console.warn)
+        if (event === 'SIGNED_IN' && session?.user) {
+          setSession(session)
+          setUser(session.user)
+        }
+
+        if (event === 'SIGNED_OUT') {
+          const currentUsername = user?.user_metadata?.username || user?.email?.split('@')[0]
+          logDebugInfo('User signed out')
+          setSession(null)
+          setUser(null)
+          clearSessionData(currentUsername)
+        }
+
+        if (event === 'TOKEN_REFRESHED' && session?.user) {
+          logDebugInfo('Token refreshed')
+          setSession(session)
+          setUser(session.user)
+        }
+
+        setLoading(false)
+      })
+
+      return () => {
+        mounted = false
+        subscription.unsubscribe()
+        logDebugInfo('Auth provider cleanup completed')
       }
-
-      if (event === 'SIGNED_OUT') {
-        const currentUsername = user?.user_metadata?.username || user?.email?.split('@')[0]
-        logDebugInfo('User signed out with session isolation')
-        setSession(null)
-        setUser(null)
-        clearSessionData(currentUsername)
-      }
-
-      if (event === 'TOKEN_REFRESHED' && session?.user) {
-        logDebugInfo('Token refreshed with session isolation')
-        setSession(session)
-        setUser(session.user)
-      }
-
-      setLoading(false)
-    })
+    }
 
     return () => {
       mounted = false
-      subscription.unsubscribe()
-      logDebugInfo('Auth provider cleanup completed with session isolation')
     }
-  }, [logDebugInfo, clearSessionData, syncUserProfile, user])
+  }, [logDebugInfo, clearSessionData, user])
 
   const signIn = async (username: string) => {
     try {
       const normalizedUsername = username.toLowerCase().trim()
-      logDebugInfo(`Attempting sign in with session isolation for username: ${normalizedUsername}`)
+      logDebugInfo(`Attempting sign in for username: ${normalizedUsername}`)
       
-      // Clear any existing session data before new login
       clearSessionData()
+
+      if (!isSupabaseConfigured) {
+        logDebugInfo('Using demo mode authentication')
+        return await demoSignIn(normalizedUsername)
+      }
       
       const tempEmail = `${normalizedUsername}@learn2go.local`
       const tempPassword = `${normalizedUsername}_temp_pass_123`
@@ -349,32 +334,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) {
         logDebugInfo('Sign in error', error)
-        
-        if (error.message?.toLowerCase().includes('invalid login credentials') ||
-            error.message?.toLowerCase().includes('invalid_credentials') ||
-            error.code === 'invalid_credentials' ||
-            error.status === 400) {
-          return { 
-            data: null, 
-            error: { 
-              message: 'Invalid username or the account may not exist. Please check your username or sign up for a new account.',
-              code: 'invalid_credentials'
-            } 
-          }
-        }
-        
         return { 
           data: null, 
           error: { 
-            message: error.message || 'An error occurred during sign in. Please try again.',
-            code: error.code || 'unknown_error'
+            message: 'Invalid username or the account may not exist. Please check your username or sign up for a new account.',
+            code: 'invalid_credentials'
           } 
         }
       }
 
       if (data?.user) {
-        logDebugInfo('Sign in successful with session isolation', { username: normalizedUsername })
-        await syncUserProfile(data.user)
+        logDebugInfo('Sign in successful', { username: normalizedUsername })
         return { data, error: null }
       }
 
@@ -401,10 +371,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signUp = async (username: string, country: string, language: string) => {
     try {
       const normalizedUsername = username.toLowerCase().trim()
-      logDebugInfo(`Attempting sign up with session isolation for username: ${normalizedUsername}`)
+      logDebugInfo(`Attempting sign up for username: ${normalizedUsername}`)
       
-      // Clear any existing session data
       clearSessionData()
+
+      if (!isSupabaseConfigured) {
+        logDebugInfo('Using demo mode registration')
+        return await demoSignUp(normalizedUsername, country, language)
+      }
       
       const availability = await checkUsernameAvailability(normalizedUsername)
       if (!availability.available) {
@@ -439,20 +413,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (data.user) {
-        logDebugInfo('Creating user profile in database with session isolation')
-        const { error: profileError } = await supabase.from('users').insert({
-          username: normalizedUsername,
-          email: tempEmail,
-          country: country,
-          language: language,
-        })
-
-        if (profileError) {
-          logDebugInfo('Error creating user profile', profileError)
-        }
-        
-        logDebugInfo('Sign up successful with session isolation', { username: normalizedUsername })
-        
+        logDebugInfo('Sign up successful', { username: normalizedUsername })
         return { 
           data: { 
             ...data, 
@@ -477,46 +438,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async (): Promise<{ success: boolean; error?: string }> => {
     try {
-      logDebugInfo('Starting secure logout with session isolation')
+      logDebugInfo('Starting logout')
       
       const currentUsername = user?.user_metadata?.username || user?.email?.split('@')[0]
       
-      // Update user's session end time
-      if (currentUsername) {
-        try {
-          await supabase
-            .from('users')
-            .update({ 
-              session_end: new Date().toISOString(),
-              current_page: 'offline'
-            })
-            .eq('username', currentUsername)
-        } catch (error) {
-          console.warn('[AUTH] Failed to update session end time:', error)
-        }
-      }
-      
-      // Clear state immediately
       setSession(null)
       setUser(null)
       
-      // Clear user-specific session data with enhanced isolation
       if (currentUsername) {
         clearSessionData(currentUsername)
       } else {
         clearSessionData()
       }
       
-      // Background cleanup (non-blocking)
-      supabase.auth.signOut().catch(console.warn)
+      if (isSupabaseConfigured) {
+        supabase.auth.signOut().catch(console.warn)
+      }
       
-      logDebugInfo('Secure logout completed with session isolation')
+      logDebugInfo('Logout completed')
       return { success: true }
       
     } catch (error) {
       logDebugInfo('Exception during logout', error)
       
-      // Force clear state even on error
       setSession(null)
       setUser(null)
       clearSessionData()
