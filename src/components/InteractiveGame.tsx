@@ -33,8 +33,6 @@ const InteractiveGame: React.FC<InteractiveGameProps> = ({
       return 'Speed Limits and Highway Safety'
     } else if (lessonId.includes('emergency') || lessonId.includes('accident')) {
       return 'Emergency Procedures'
-    } else if (lessonId.includes('intro') || lessonId.includes('introduction')) {
-      return 'Introduction to Road Safety'
     } else {
       return 'Traffic Safety'
     }

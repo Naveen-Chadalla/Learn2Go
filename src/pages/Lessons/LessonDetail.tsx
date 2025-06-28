@@ -138,16 +138,6 @@ const LessonDetail: React.FC = () => {
       ]
     }
     
-    if (lesson?.title.toLowerCase().includes('introduction') || lesson?.title.toLowerCase().includes('intro')) {
-      return [
-        'https://images.pexels.com/photos/210182/pexels-photo-210182.jpeg?auto=compress&cs=tinysrgb&w=800', // Road
-        'https://images.pexels.com/photos/1004409/pexels-photo-1004409.jpeg?auto=compress&cs=tinysrgb&w=800', // Pedestrian crossing
-        'https://images.pexels.com/photos/2199293/pexels-photo-2199293.jpeg?auto=compress&cs=tinysrgb&w=800', // Traffic signals
-        'https://images.pexels.com/photos/1563356/pexels-photo-1563356.jpeg?auto=compress&cs=tinysrgb&w=800', // City traffic
-        'https://images.pexels.com/photos/378570/pexels-photo-378570.jpeg?auto=compress&cs=tinysrgb&w=800' // Urban traffic
-      ]
-    }
-    
     return baseImages
   }
 
