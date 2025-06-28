@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import TrafficLightGame from './TrafficLightGame'
 import PedestrianCrossingGame from './PedestrianCrossingGame'
 import ParkingGame from './ParkingGame'
 import SpeedLimitGame from './SpeedLimitGame'
-import { Play, Info, HelpCircle, AlertTriangle } from 'lucide-react'
+import EmergencyResponseGame from './EmergencyResponseGame'
+import { Play, HelpCircle, AlertTriangle, Gamepad, Keyboard, Smartphone, Info } from 'lucide-react'
 
 interface GameSelectorProps {
   lessonId: string
@@ -29,25 +30,45 @@ const GameSelector: React.FC<GameSelectorProps> = ({
   const [selectedGame, setSelectedGame] = useState<string | null>(null)
   const [showInstructions, setShowInstructions] = useState(true)
   const [showHelp, setShowHelp] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+
+  // Check if user is on mobile device
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent))
+    }
+    
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    
+    return () => {
+      window.removeEventListener('resize', checkMobile)
+    }
+  }, [])
 
   // Determine which game to show based on lesson content
   const getGameType = () => {
     const title = lessonTitle.toLowerCase()
+    const id = lessonId.toLowerCase()
     
-    if (title.includes('traffic light') || title.includes('signal') || title.includes('intersection')) {
+    if (title.includes('traffic light') || title.includes('signal') || id.includes('signal') || title.includes('intersection')) {
       return 'traffic-light'
     }
     
-    if (title.includes('pedestrian') || title.includes('crosswalk') || title.includes('crossing')) {
+    if (title.includes('pedestrian') || title.includes('crosswalk') || id.includes('cross') || title.includes('crossing')) {
       return 'pedestrian'
     }
     
-    if (title.includes('parking') || title.includes('park')) {
+    if (title.includes('parking') || title.includes('park') || id.includes('park')) {
       return 'parking'
     }
     
-    if (title.includes('speed') || title.includes('limit') || title.includes('highway')) {
+    if (title.includes('speed') || title.includes('limit') || id.includes('speed') || title.includes('highway')) {
       return 'speed-limit'
+    }
+    
+    if (title.includes('emergency') || title.includes('accident') || id.includes('emergency')) {
+      return 'emergency'
     }
     
     // Default game based on country or general traffic safety
@@ -73,6 +94,10 @@ const GameSelector: React.FC<GameSelectorProps> = ({
         'Vehicles should stop on red and yellow lights',
         'Earn points for each vehicle that stops properly',
         'Lose points for traffic violations'
+      ],
+      mobileControls: [
+        'Tap the traffic light to change signals',
+        'Swipe to view different parts of the intersection'
       ]
     },
     {
@@ -85,6 +110,10 @@ const GameSelector: React.FC<GameSelectorProps> = ({
         'They should cross during WALK signals',
         'Vehicles must stop for crossing pedestrians',
         'Earn points for safe crossings'
+      ],
+      mobileControls: [
+        'Tap the crosswalk signal to change it',
+        'Tap pedestrians to guide them'
       ]
     },
     {
@@ -98,6 +127,10 @@ const GameSelector: React.FC<GameSelectorProps> = ({
         '←/A - Turn left',
         '→/D - Turn right',
         'Park accurately in the designated space'
+      ],
+      mobileControls: [
+        'Use on-screen controls to drive',
+        'Tap direction buttons to steer'
       ]
     },
     {
@@ -111,6 +144,26 @@ const GameSelector: React.FC<GameSelectorProps> = ({
         'Follow posted speed limits',
         'Adapt to changing conditions',
         'Watch for speed cameras'
+      ],
+      mobileControls: [
+        'Tap top of screen to accelerate',
+        'Tap bottom of screen to brake'
+      ]
+    },
+    {
+      id: 'emergency',
+      name: 'Emergency Response',
+      description: 'React correctly to emergency situations on the road',
+      icon: '🚨',
+      controls: [
+        'Use arrow keys to select responses',
+        'React quickly to emergency scenarios',
+        'Choose the safest action for each situation',
+        'Learn proper emergency protocols'
+      ],
+      mobileControls: [
+        'Tap response options to select',
+        'Swipe between scenarios'
       ]
     }
   ]
@@ -132,6 +185,8 @@ const GameSelector: React.FC<GameSelectorProps> = ({
         return <ParkingGame onComplete={onComplete} theme={theme} />
       case 'speed-limit':
         return <SpeedLimitGame onComplete={onComplete} theme={theme} />
+      case 'emergency':
+        return <EmergencyResponseGame onComplete={onComplete} theme={theme} />
       default:
         return null
     }
@@ -157,7 +212,10 @@ const GameSelector: React.FC<GameSelectorProps> = ({
       
       <div className="bg-blue-50 rounded-2xl p-6 mb-6 border border-blue-200">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-bold text-blue-900">How to Play:</h3>
+          <div className="flex items-center space-x-2">
+            <Gamepad className="h-5 w-5 text-blue-600" />
+            <h3 className="font-bold text-blue-900">How to Play:</h3>
+          </div>
           <button 
             onClick={() => setShowHelp(!showHelp)}
             className="text-blue-600 hover:text-blue-800 transition-colors"
@@ -165,14 +223,47 @@ const GameSelector: React.FC<GameSelectorProps> = ({
             <HelpCircle className="h-5 w-5" />
           </button>
         </div>
-        <ul className="text-blue-800 text-left space-y-2">
-          {currentGame?.controls.map((instruction, index) => (
-            <li key={index} className="flex items-start space-x-2">
-              <span className="text-blue-500">•</span>
-              <span>{instruction}</span>
-            </li>
-          ))}
-        </ul>
+        
+        <div className="mb-4">
+          <div className="flex items-center space-x-2 mb-2">
+            <Keyboard className="h-4 w-4 text-blue-600" />
+            <span className="font-medium text-blue-800">Keyboard Controls:</span>
+          </div>
+          <ul className="text-blue-800 text-left space-y-2 pl-6">
+            {currentGame?.controls.map((instruction, index) => (
+              <li key={index} className="list-disc">
+                <span>{instruction}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        
+        {currentGame?.mobileControls && (
+          <div className="mb-4">
+            <div className="flex items-center space-x-2 mb-2">
+              <Smartphone className="h-4 w-4 text-blue-600" />
+              <span className="font-medium text-blue-800">Mobile Controls:</span>
+            </div>
+            <ul className="text-blue-800 text-left space-y-2 pl-6">
+              {currentGame.mobileControls.map((instruction, index) => (
+                <li key={index} className="list-disc">
+                  <span>{instruction}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        
+        {isMobile && (
+          <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-xl p-3">
+            <div className="flex items-start space-x-2">
+              <AlertTriangle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+              <p className="text-yellow-700 text-sm">
+                This game works best with a keyboard. Some features may be limited on mobile devices.
+              </p>
+            </div>
+          </div>
+        )}
         
         {showHelp && (
           <motion.div 
@@ -181,12 +272,19 @@ const GameSelector: React.FC<GameSelectorProps> = ({
             exit={{ opacity: 0, height: 0 }}
             className="mt-4 pt-4 border-t border-blue-200"
           >
-            <div className="flex items-start space-x-2 text-sm">
-              <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
-              <p className="text-blue-700">
-                This game uses keyboard controls. Make sure your keyboard is accessible and working properly.
-                If you're on a mobile device, you may need to use a physical keyboard or try a different device.
-              </p>
+            <div className="flex items-start space-x-2">
+              <Info className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <div className="text-blue-700 text-sm">
+                <p className="mb-2">
+                  <strong>Game Tips:</strong>
+                </p>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>This game is designed to reinforce the concepts from "{lessonTitle}"</li>
+                  <li>Focus on safety principles rather than just scoring points</li>
+                  <li>If you're struggling, try slowing down and observing patterns</li>
+                  <li>You can retry the game as many times as needed</li>
+                </ul>
+              </div>
             </div>
           </motion.div>
         )}

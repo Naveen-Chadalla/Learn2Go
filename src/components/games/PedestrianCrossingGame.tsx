@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Users, Clock, Trophy, RotateCcw, Play, Pause, AlertTriangle } from 'lucide-react'
+import { Users, Clock, Trophy, RotateCcw, Play, Pause, AlertTriangle, HelpCircle } from 'lucide-react'
 
 interface PedestrianCrossingGameProps {
   onComplete: (score: number) => void
@@ -21,6 +21,7 @@ interface Pedestrian {
   waiting: boolean
   crossing: boolean
   safe: boolean
+  guided: boolean
 }
 
 interface Vehicle {
@@ -42,6 +43,15 @@ const PedestrianCrossingGame: React.FC<PedestrianCrossingGameProps> = ({ onCompl
   const [nearMisses, setNearMisses] = useState(0)
   const [accidents, setAccidents] = useState(0)
   const [crosswalkSignal, setCrosswalkSignal] = useState<'walk' | 'dont-walk'>('dont-walk')
+  const [showHelp, setShowHelp] = useState(false)
+  const [touchControls, setTouchControls] = useState(false)
+  const gameAreaRef = useRef<HTMLDivElement>(null)
+
+  // Check if user is on mobile
+  useEffect(() => {
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+    setTouchControls(isMobile)
+  }, [])
 
   const spawnPedestrian = useCallback(() => {
     const types = ['adult', 'child', 'elderly'] as const
@@ -58,7 +68,8 @@ const PedestrianCrossingGame: React.FC<PedestrianCrossingGameProps> = ({ onCompl
       type,
       waiting: true,
       crossing: false,
-      safe: false
+      safe: false,
+      guided: false
     }
     
     setPedestrians(prev => [...prev, newPedestrian])
@@ -149,12 +160,14 @@ const PedestrianCrossingGame: React.FC<PedestrianCrossingGameProps> = ({ onCompl
         return prev.map(pedestrian => {
           if (pedestrian.waiting) {
             // Check if should start crossing
-            if (crosswalkSignal === 'walk' || 
-                (crosswalkSignal === 'dont-walk' && Math.random() < 0.1)) { // Some risk-takers
+            if ((crosswalkSignal === 'walk' && Math.random() < 0.3) || 
+                (pedestrian.guided) || 
+                (crosswalkSignal === 'dont-walk' && Math.random() < 0.05)) { // Some risk-takers
               return {
                 ...pedestrian,
                 waiting: false,
-                crossing: true
+                crossing: true,
+                guided: false
               }
             }
             return pedestrian
@@ -236,6 +249,26 @@ const PedestrianCrossingGame: React.FC<PedestrianCrossingGameProps> = ({ onCompl
     return () => clearInterval(timer)
   }, [gameState])
 
+  // Handle touch controls for crosswalk signal
+  const handleTouchCrosswalkSignal = () => {
+    if (touchControls && gameState === 'playing') {
+      setCrosswalkSignal(current => current === 'walk' ? 'dont-walk' : 'walk')
+    }
+  }
+
+  // Handle touch controls for pedestrians
+  const handleTouchPedestrian = (id: string) => {
+    if (touchControls && gameState === 'playing') {
+      setPedestrians(prev => 
+        prev.map(p => 
+          p.id === id && p.waiting 
+            ? { ...p, guided: true } 
+            : p
+        )
+      )
+    }
+  }
+
   const startGame = () => {
     setGameState('playing')
     setScore(0)
@@ -286,15 +319,45 @@ const PedestrianCrossingGame: React.FC<PedestrianCrossingGameProps> = ({ onCompl
           stop for pedestrians. Prevent accidents and promote safe crossing behavior.
         </p>
         <div className="bg-blue-50 rounded-2xl p-6 mb-6 border border-blue-200">
-          <h3 className="font-bold text-blue-900 mb-3">How to Play:</h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-bold text-blue-900">How to Play:</h3>
+            <button 
+              onClick={() => setShowHelp(!showHelp)}
+              className="text-blue-600 hover:text-blue-800 transition-colors"
+            >
+              <HelpCircle className="h-5 w-5" />
+            </button>
+          </div>
           <ul className="text-blue-800 text-left space-y-2">
             <li>• Pedestrians will wait at crosswalks</li>
             <li>• They should cross during WALK signals</li>
             <li>• Vehicles must stop for crossing pedestrians</li>
             <li>• Earn +10 points for safe crossings</li>
             <li>• Lose -50 points for accidents</li>
-            <li>• Watch for different pedestrian types (children, elderly)</li>
+            {touchControls && (
+              <>
+                <li className="font-medium">• Tap the crosswalk signal to change it</li>
+                <li className="font-medium">• Tap waiting pedestrians to guide them</li>
+              </>
+            )}
           </ul>
+          
+          {showHelp && (
+            <motion.div 
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mt-4 pt-4 border-t border-blue-200"
+            >
+              <div className="flex items-start space-x-2 text-sm">
+                <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                <p className="text-blue-700">
+                  Pay special attention to children and elderly pedestrians who may move at different speeds.
+                  Remember that vehicles should always yield to pedestrians in crosswalks!
+                </p>
+              </div>
+            </motion.div>
+          )}
         </div>
         <motion.button
           onClick={startGame}
@@ -342,6 +405,18 @@ const PedestrianCrossingGame: React.FC<PedestrianCrossingGameProps> = ({ onCompl
             <div className="text-sm text-gray-600">Safety Score</div>
           </div>
         </div>
+        
+        <div className="bg-blue-50 rounded-2xl p-6 mb-6 border border-blue-200">
+          <h3 className="font-bold text-blue-900 mb-2">Pedestrian Safety Insights:</h3>
+          <p className="text-blue-800 text-sm">
+            {percentage >= 80 
+              ? "Excellent! You prioritized pedestrian safety and prevented accidents. Remember that pedestrians always have the right of way at crosswalks."
+              : percentage >= 60 
+              ? "Good job helping pedestrians cross safely. Always ensure vehicles yield to pedestrians in crosswalks."
+              : "Pedestrian safety needs improvement. Always ensure pedestrians cross at designated crosswalks and when the signal indicates it's safe."}
+          </p>
+        </div>
+        
         <div className="flex justify-center space-x-4">
           <button
             onClick={restartGame}
@@ -397,7 +472,11 @@ const PedestrianCrossingGame: React.FC<PedestrianCrossingGameProps> = ({ onCompl
       </div>
 
       {/* Game Area */}
-      <div className="relative bg-gray-700 rounded-3xl overflow-hidden shadow-2xl" style={{ height: '400px' }}>
+      <div 
+        ref={gameAreaRef}
+        className="relative bg-gray-700 rounded-3xl overflow-hidden shadow-2xl" 
+        style={{ height: '400px' }}
+      >
         {/* Road */}
         <div className="absolute inset-0">
           {/* Main road */}
@@ -429,7 +508,12 @@ const PedestrianCrossingGame: React.FC<PedestrianCrossingGameProps> = ({ onCompl
         </div>
 
         {/* Crosswalk Signal */}
-        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20">
+        <motion.div 
+          className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20 cursor-pointer"
+          onClick={handleTouchCrosswalkSignal}
+          whileHover={{ scale: touchControls ? 1.1 : 1 }}
+          whileTap={{ scale: touchControls ? 0.9 : 1 }}
+        >
           <div className="bg-black rounded-lg p-2 shadow-lg">
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-lg ${
               crosswalkSignal === 'walk' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
@@ -440,7 +524,10 @@ const PedestrianCrossingGame: React.FC<PedestrianCrossingGameProps> = ({ onCompl
           <div className="text-center mt-1 text-white text-xs font-bold">
             {crosswalkSignal === 'walk' ? 'WALK' : "DON'T WALK"}
           </div>
-        </div>
+          {touchControls && (
+            <div className="text-white text-xs mt-1 text-center">Tap to change</div>
+          )}
+        </motion.div>
 
         {/* Vehicles */}
         <AnimatePresence>
@@ -480,13 +567,26 @@ const PedestrianCrossingGame: React.FC<PedestrianCrossingGameProps> = ({ onCompl
               }}
               exit={{ opacity: 0, scale: 0.8 }}
               className="absolute z-20"
+              onClick={() => handleTouchPedestrian(pedestrian.id)}
+              whileHover={{ scale: touchControls && pedestrian.waiting ? 1.2 : 1 }}
+              whileTap={{ scale: touchControls && pedestrian.waiting ? 0.9 : 1 }}
             >
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-lg ${
-                pedestrian.waiting ? 'bg-yellow-100' : 
-                pedestrian.crossing ? 'bg-blue-100' : 'bg-green-100'
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-lg ${
+                pedestrian.waiting 
+                  ? pedestrian.guided 
+                    ? 'bg-green-100 animate-pulse' 
+                    : 'bg-yellow-100' 
+                  : pedestrian.crossing 
+                    ? 'bg-blue-100' 
+                    : 'bg-green-100'
               }`}>
                 {getPedestrianEmoji(pedestrian.type)}
               </div>
+              {touchControls && pedestrian.waiting && (
+                <div className="absolute -bottom-4 left-1/2 transform -translate-x-1/2 text-white text-[10px] whitespace-nowrap">
+                  Tap to guide
+                </div>
+              )}
             </motion.div>
           ))}
         </AnimatePresence>
@@ -526,6 +626,7 @@ const PedestrianCrossingGame: React.FC<PedestrianCrossingGameProps> = ({ onCompl
         </div>
         <p className="text-blue-800 text-sm mt-2">
           Help pedestrians cross safely! Vehicles should stop when pedestrians are in the crosswalk.
+          {touchControls && " Tap pedestrians to guide them and tap the signal to change it."}
         </p>
       </div>
     </div>

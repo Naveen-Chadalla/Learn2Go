@@ -23,15 +23,15 @@ const InteractiveGame: React.FC<InteractiveGameProps> = ({
   // Get lesson title from lessonId
   const getLessonTitle = () => {
     // Extract topic from lessonId or use a default
-    if (lessonId.includes('traffic-signal') || lessonId.includes('light')) {
+    if (lessonId.includes('traffic-signal') || lessonId.includes('light') || lessonId.includes('intersection')) {
       return 'Traffic Signals and Lights'
-    } else if (lessonId.includes('pedestrian') || lessonId.includes('cross')) {
+    } else if (lessonId.includes('pedestrian') || lessonId.includes('cross') || lessonId.includes('walk')) {
       return 'Pedestrian Safety and Crosswalks'
     } else if (lessonId.includes('park')) {
       return 'Parking Rules and Techniques'
-    } else if (lessonId.includes('speed') || lessonId.includes('limit')) {
+    } else if (lessonId.includes('speed') || lessonId.includes('limit') || lessonId.includes('highway')) {
       return 'Speed Limits and Highway Safety'
-    } else if (lessonId.includes('emergency')) {
+    } else if (lessonId.includes('emergency') || lessonId.includes('accident')) {
       return 'Emergency Procedures'
     } else {
       return 'Traffic Safety'

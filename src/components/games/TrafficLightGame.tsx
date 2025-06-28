@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Car, Clock, Trophy, RotateCcw, Play, Pause } from 'lucide-react'
+import { Car, Clock, Trophy, RotateCcw, Play, Pause, AlertTriangle, HelpCircle } from 'lucide-react'
 
 interface TrafficLightGameProps {
   onComplete: (score: number) => void
@@ -18,6 +18,8 @@ interface Vehicle {
   direction: 'horizontal' | 'vertical'
   type: 'car' | 'truck' | 'bike'
   color: string
+  stopped: boolean
+  violated: boolean
 }
 
 type LightState = 'red' | 'yellow' | 'green'
@@ -31,6 +33,15 @@ const TrafficLightGame: React.FC<TrafficLightGameProps> = ({ onComplete, theme }
   const [violations, setViolations] = useState(0)
   const [successfulStops, setSuccessfulStops] = useState(0)
   const [gameSpeed, setGameSpeed] = useState(1)
+  const [showHelp, setShowHelp] = useState(false)
+  const [touchControls, setTouchControls] = useState(false)
+  const gameAreaRef = useRef<HTMLDivElement>(null)
+
+  // Check if user is on mobile
+  useEffect(() => {
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+    setTouchControls(isMobile)
+  }, [])
 
   // Game mechanics
   const spawnVehicle = useCallback(() => {
@@ -47,7 +58,9 @@ const TrafficLightGame: React.FC<TrafficLightGameProps> = ({ onComplete, theme }
       speed: (Math.random() * 2 + 1) * gameSpeed,
       direction,
       type,
-      color: colors[Math.floor(Math.random() * colors.length)]
+      color: colors[Math.floor(Math.random() * colors.length)],
+      stopped: false,
+      violated: false
     }
     
     setVehicles(prev => [...prev, newVehicle])
@@ -92,9 +105,12 @@ const TrafficLightGame: React.FC<TrafficLightGameProps> = ({ onComplete, theme }
     const moveVehicles = () => {
       setVehicles(prev => {
         return prev.map(vehicle => {
+          if (vehicle.stopped) return vehicle
+          
           let newX = vehicle.x
           let newY = vehicle.y
           let shouldStop = false
+          let violated = vehicle.violated
 
           // Check if vehicle should stop at traffic light
           if (vehicle.direction === 'horizontal') {
@@ -102,8 +118,9 @@ const TrafficLightGame: React.FC<TrafficLightGameProps> = ({ onComplete, theme }
             // Stop zone for horizontal traffic
             if (newX > 180 && newX < 220 && (lightState === 'red' || lightState === 'yellow')) {
               shouldStop = true
-              if (newX > 200) {
+              if (newX > 200 && !vehicle.violated) {
                 // Vehicle ran the light
+                violated = true
                 setViolations(v => v + 1)
                 setScore(s => Math.max(0, s - 10))
               }
@@ -113,8 +130,9 @@ const TrafficLightGame: React.FC<TrafficLightGameProps> = ({ onComplete, theme }
             // Stop zone for vertical traffic
             if (newY > 180 && newY < 220 && (lightState === 'red' || lightState === 'yellow')) {
               shouldStop = true
-              if (newY > 200) {
+              if (newY > 200 && !vehicle.violated) {
                 // Vehicle ran the light
+                violated = true
                 setViolations(v => v + 1)
                 setScore(s => Math.max(0, s - 10))
               }
@@ -122,7 +140,7 @@ const TrafficLightGame: React.FC<TrafficLightGameProps> = ({ onComplete, theme }
           }
 
           // Award points for proper stopping
-          if (shouldStop && ((vehicle.direction === 'horizontal' && newX <= 200) || 
+          if (shouldStop && !vehicle.stopped && ((vehicle.direction === 'horizontal' && newX <= 200) || 
                            (vehicle.direction === 'vertical' && newY <= 200))) {
             setSuccessfulStops(s => s + 1)
             setScore(s => s + 5)
@@ -131,7 +149,9 @@ const TrafficLightGame: React.FC<TrafficLightGameProps> = ({ onComplete, theme }
           return {
             ...vehicle,
             x: shouldStop ? vehicle.x : newX,
-            y: shouldStop ? vehicle.y : newY
+            y: shouldStop ? vehicle.y : newY,
+            stopped: shouldStop,
+            violated
           }
         }).filter(vehicle => 
           vehicle.x < 500 && vehicle.y < 500 && vehicle.x > -100 && vehicle.y > -100
@@ -171,6 +191,20 @@ const TrafficLightGame: React.FC<TrafficLightGameProps> = ({ onComplete, theme }
     return () => clearInterval(difficultyTimer)
   }, [gameState])
 
+  // Handle touch controls for traffic light
+  const handleTouchTrafficLight = () => {
+    if (touchControls && gameState === 'playing') {
+      setLightState(current => {
+        switch (current) {
+          case 'red': return 'green'
+          case 'green': return 'yellow'
+          case 'yellow': return 'red'
+          default: return 'red'
+        }
+      })
+    }
+  }
+
   const startGame = () => {
     setGameState('playing')
     setScore(0)
@@ -196,6 +230,14 @@ const TrafficLightGame: React.FC<TrafficLightGameProps> = ({ onComplete, theme }
     onComplete(percentage)
   }
 
+  const getVehicleEmoji = (type: string) => {
+    switch (type) {
+      case 'truck': return '🚚'
+      case 'bike': return '🏍️'
+      default: return '🚗'
+    }
+  }
+
   if (gameState === 'waiting') {
     return (
       <div className="text-center p-8">
@@ -212,14 +254,42 @@ const TrafficLightGame: React.FC<TrafficLightGameProps> = ({ onComplete, theme }
           Vehicles must stop on red and yellow lights. Earn points for safe traffic management!
         </p>
         <div className="bg-blue-50 rounded-2xl p-6 mb-6 border border-blue-200">
-          <h3 className="font-bold text-blue-900 mb-3">How to Play:</h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-bold text-blue-900">How to Play:</h3>
+            <button 
+              onClick={() => setShowHelp(!showHelp)}
+              className="text-blue-600 hover:text-blue-800 transition-colors"
+            >
+              <HelpCircle className="h-5 w-5" />
+            </button>
+          </div>
           <ul className="text-blue-800 text-left space-y-2">
             <li>• Watch vehicles approach the intersection</li>
             <li>• Vehicles should stop on red and yellow lights</li>
             <li>• Earn +5 points for each vehicle that stops properly</li>
             <li>• Lose -10 points for each traffic violation</li>
             <li>• Game gets faster as time progresses</li>
+            {touchControls && (
+              <li className="font-medium">• Tap the traffic light to change signals</li>
+            )}
           </ul>
+          
+          {showHelp && (
+            <motion.div 
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mt-4 pt-4 border-t border-blue-200"
+            >
+              <div className="flex items-start space-x-2 text-sm">
+                <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                <p className="text-blue-700">
+                  Traffic lights cycle automatically. Your goal is to observe and ensure vehicles follow the rules.
+                  {touchControls && " On mobile, you can tap the traffic light to manually change signals."}
+                </p>
+              </div>
+            </motion.div>
+          )}
         </div>
         <motion.button
           onClick={startGame}
@@ -267,6 +337,18 @@ const TrafficLightGame: React.FC<TrafficLightGameProps> = ({ onComplete, theme }
             <div className="text-sm text-gray-600">Performance</div>
           </div>
         </div>
+        
+        <div className="bg-blue-50 rounded-2xl p-6 mb-6 border border-blue-200">
+          <h3 className="font-bold text-blue-900 mb-2">Traffic Management Insights:</h3>
+          <p className="text-blue-800 text-sm">
+            {percentage >= 80 
+              ? "Excellent traffic management! You ensured vehicles followed signals properly, preventing accidents and maintaining smooth traffic flow."
+              : percentage >= 60 
+              ? "Good job managing traffic. Remember that consistent enforcement of traffic signals is key to road safety."
+              : "Traffic management needs improvement. Red and yellow lights require vehicles to stop completely to prevent accidents."}
+          </p>
+        </div>
+        
         <div className="flex justify-center space-x-4">
           <button
             onClick={restartGame}
@@ -322,7 +404,11 @@ const TrafficLightGame: React.FC<TrafficLightGameProps> = ({ onComplete, theme }
       </div>
 
       {/* Game Area */}
-      <div className="relative bg-gray-800 rounded-3xl overflow-hidden shadow-2xl" style={{ height: '400px' }}>
+      <div 
+        ref={gameAreaRef}
+        className="relative bg-gray-800 rounded-3xl overflow-hidden shadow-2xl" 
+        style={{ height: '400px' }}
+      >
         {/* Road */}
         <div className="absolute inset-0">
           {/* Horizontal road */}
@@ -342,13 +428,21 @@ const TrafficLightGame: React.FC<TrafficLightGameProps> = ({ onComplete, theme }
         </div>
 
         {/* Traffic Light */}
-        <div className="absolute top-1/4 left-1/2 transform -translate-x-1/2 z-20">
+        <motion.div 
+          className="absolute top-1/4 left-1/2 transform -translate-x-1/2 z-20 cursor-pointer"
+          onClick={handleTouchTrafficLight}
+          whileHover={{ scale: touchControls ? 1.1 : 1 }}
+          whileTap={{ scale: touchControls ? 0.9 : 1 }}
+        >
           <div className="bg-black rounded-lg p-2 shadow-lg">
             <div className={`w-6 h-6 rounded-full mb-1 ${lightState === 'red' ? 'bg-red-500 shadow-lg shadow-red-500/50' : 'bg-red-900'}`}></div>
             <div className={`w-6 h-6 rounded-full mb-1 ${lightState === 'yellow' ? 'bg-yellow-500 shadow-lg shadow-yellow-500/50' : 'bg-yellow-900'}`}></div>
             <div className={`w-6 h-6 rounded-full ${lightState === 'green' ? 'bg-green-500 shadow-lg shadow-green-500/50' : 'bg-green-900'}`}></div>
           </div>
-        </div>
+          {touchControls && (
+            <div className="text-white text-xs mt-1 text-center">Tap to change</div>
+          )}
+        </motion.div>
 
         {/* Vehicles */}
         <AnimatePresence>
@@ -370,10 +464,12 @@ const TrafficLightGame: React.FC<TrafficLightGameProps> = ({ onComplete, theme }
               }}
             >
               <div 
-                className="w-8 h-6 rounded-lg shadow-lg flex items-center justify-center"
-                style={{ backgroundColor: vehicle.color }}
+                className={`w-10 h-6 rounded-lg shadow-lg flex items-center justify-center ${
+                  vehicle.violated ? 'bg-red-500' : vehicle.stopped ? 'bg-amber-500' : ''
+                }`}
+                style={{ backgroundColor: vehicle.violated ? '#EF4444' : vehicle.stopped ? '#F59E0B' : vehicle.color }}
               >
-                <Car className="h-4 w-4 text-white" />
+                <span className="text-white text-xs">{getVehicleEmoji(vehicle.type)}</span>
               </div>
             </motion.div>
           ))}

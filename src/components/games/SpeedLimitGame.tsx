@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Gauge, Clock, Trophy, RotateCcw, Play, Pause, AlertTriangle } from 'lucide-react'
+import { Gauge, Clock, Trophy, RotateCcw, Play, Pause, AlertTriangle, HelpCircle, Camera } from 'lucide-react'
 
 interface SpeedLimitGameProps {
   onComplete: (score: number) => void
@@ -39,6 +39,15 @@ const SpeedLimitGame: React.FC<SpeedLimitGameProps> = ({ onComplete, theme }) =>
   const [fuelEfficiency, setFuelEfficiency] = useState(100)
   const [isAccelerating, setIsAccelerating] = useState(false)
   const [isBraking, setIsBraking] = useState(false)
+  const [showHelp, setShowHelp] = useState(false)
+  const [touchControls, setTouchControls] = useState(false)
+  const gameAreaRef = useRef<HTMLDivElement>(null)
+
+  // Check if user is on mobile
+  useEffect(() => {
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+    setTouchControls(isMobile)
+  }, [])
 
   const roadSegments: RoadSegment[] = [
     {
@@ -138,6 +147,19 @@ const SpeedLimitGame: React.FC<SpeedLimitGameProps> = ({ onComplete, theme }) =>
       window.removeEventListener('keyup', handleKeyUp)
     }
   }, [])
+
+  // Touch controls
+  const handleTouchAccelerate = (isPressed: boolean) => {
+    if (touchControls && gameState === 'playing') {
+      setIsAccelerating(isPressed)
+    }
+  }
+
+  const handleTouchBrake = (isPressed: boolean) => {
+    if (touchControls && gameState === 'playing') {
+      setIsBraking(isPressed)
+    }
+  }
 
   // Speed and movement logic
   useEffect(() => {
@@ -320,7 +342,15 @@ const SpeedLimitGame: React.FC<SpeedLimitGameProps> = ({ onComplete, theme }) =>
           Watch for speed cameras, weather conditions, and changing speed limits!
         </p>
         <div className="bg-blue-50 rounded-2xl p-6 mb-6 border border-blue-200">
-          <h3 className="font-bold text-blue-900 mb-3">How to Play:</h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-bold text-blue-900">How to Play:</h3>
+            <button 
+              onClick={() => setShowHelp(!showHelp)}
+              className="text-blue-600 hover:text-blue-800 transition-colors"
+            >
+              <HelpCircle className="h-5 w-5" />
+            </button>
+          </div>
           <ul className="text-blue-800 text-left space-y-2">
             <li>• Use ↑/W to accelerate, ↓/S to brake</li>
             <li>• Follow speed limits for each road type</li>
@@ -328,7 +358,30 @@ const SpeedLimitGame: React.FC<SpeedLimitGameProps> = ({ onComplete, theme }) =>
             <li>• Adapt to weather conditions</li>
             <li>• Maintain good fuel efficiency</li>
             <li>• Avoid speeding violations</li>
+            {touchControls && (
+              <>
+                <li className="font-medium">• Tap top half of screen to accelerate</li>
+                <li className="font-medium">• Tap bottom half of screen to brake</li>
+              </>
+            )}
           </ul>
+          
+          {showHelp && (
+            <motion.div 
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mt-4 pt-4 border-t border-blue-200"
+            >
+              <div className="flex items-start space-x-2 text-sm">
+                <Camera className="h-4 w-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                <p className="text-blue-700">
+                  <strong>Speed Camera Alert:</strong> Speed cameras will flash if you're speeding when you pass them. 
+                  These violations result in heavy point penalties, so watch your speed carefully!
+                </p>
+              </div>
+            </motion.div>
+          )}
         </div>
         <motion.button
           onClick={startGame}
@@ -377,6 +430,18 @@ const SpeedLimitGame: React.FC<SpeedLimitGameProps> = ({ onComplete, theme }) =>
             <div className="text-sm text-gray-600">Driving Score</div>
           </div>
         </div>
+        
+        <div className="bg-blue-50 rounded-2xl p-6 mb-6 border border-blue-200">
+          <h3 className="font-bold text-blue-900 mb-2">Speed Management Assessment:</h3>
+          <p className="text-blue-800 text-sm">
+            {percentage >= 80 
+              ? "Excellent speed management! You adapted well to different road conditions and speed limits, maintaining safety and efficiency."
+              : percentage >= 60 
+              ? "Good driving. Remember that speed limits are set for safety reasons and should be followed in all conditions."
+              : "Your speed management needs improvement. Always follow posted speed limits and adjust for weather and road conditions."}
+          </p>
+        </div>
+        
         <div className="flex justify-center space-x-4">
           <button
             onClick={restartGame}
@@ -468,7 +533,29 @@ const SpeedLimitGame: React.FC<SpeedLimitGameProps> = ({ onComplete, theme }) =>
       </div>
 
       {/* Road View */}
-      <div className="relative bg-gray-600 rounded-3xl overflow-hidden shadow-2xl mb-6" style={{ height: '200px' }}>
+      <div 
+        ref={gameAreaRef}
+        className="relative bg-gray-600 rounded-3xl overflow-hidden shadow-2xl mb-6" 
+        style={{ height: '200px' }}
+        onTouchStart={(e) => {
+          if (!touchControls || gameState !== 'playing') return
+          const touch = e.touches[0]
+          const rect = e.currentTarget.getBoundingClientRect()
+          const y = touch.clientY - rect.top
+          
+          if (y < rect.height / 2) {
+            handleTouchAccelerate(true)
+          } else {
+            handleTouchBrake(true)
+          }
+        }}
+        onTouchEnd={() => {
+          if (touchControls && gameState === 'playing') {
+            handleTouchAccelerate(false)
+            handleTouchBrake(false)
+          }
+        }}
+      >
         {/* Road surface */}
         <div className="absolute inset-0 bg-gray-600">
           {/* Road markings */}
@@ -505,6 +592,25 @@ const SpeedLimitGame: React.FC<SpeedLimitGameProps> = ({ onComplete, theme }) =>
           <div className="absolute inset-0 bg-blue-900 opacity-20" />
         )}
 
+        {/* Speed limit sign */}
+        <div className="absolute top-4 right-4 w-12 h-12 bg-white rounded-full border-4 border-red-600 flex items-center justify-center font-bold text-lg">
+          {segment.speedLimit}
+        </div>
+
+        {/* Touch control indicators */}
+        {touchControls && (
+          <>
+            <div className="absolute top-0 left-0 right-0 h-1/2 bg-green-500 opacity-10 pointer-events-none"></div>
+            <div className="absolute bottom-0 left-0 right-0 h-1/2 bg-red-500 opacity-10 pointer-events-none"></div>
+            <div className="absolute top-1/4 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white text-xs font-bold opacity-70">
+              TAP TO ACCELERATE
+            </div>
+            <div className="absolute bottom-1/4 left-1/2 transform -translate-x-1/2 translate-y-1/2 text-white text-xs font-bold opacity-70">
+              TAP TO BRAKE
+            </div>
+          </>
+        )}
+
         {/* Pause Overlay */}
         {gameState === 'paused' && (
           <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-30">
@@ -532,7 +638,7 @@ const SpeedLimitGame: React.FC<SpeedLimitGameProps> = ({ onComplete, theme }) =>
           <div className="text-blue-800 text-sm space-y-1">
             <div>Type: {segment.type.charAt(0).toUpperCase() + segment.type.slice(1)}</div>
             <div>Speed Limit: {segment.speedLimit} mph</div>
-            <div>Weather: {segment.weather}</div>
+            <div>Weather: {segment.weather.charAt(0).toUpperCase() + segment.weather.slice(1)}</div>
             <div>Hazards: {segment.hazards.join(', ')}</div>
           </div>
         </div>
@@ -561,7 +667,9 @@ const SpeedLimitGame: React.FC<SpeedLimitGameProps> = ({ onComplete, theme }) =>
       {/* Controls reminder */}
       <div className="mt-4 p-3 bg-gray-50 rounded-xl border border-gray-200 text-center">
         <p className="text-gray-600 text-sm">
-          Use ↑/W to accelerate, ↓/S to brake | Current: {segment.type} zone - {segment.speedLimit} mph limit
+          {touchControls 
+            ? "Tap top half to accelerate, bottom half to brake" 
+            : "Use ↑/W to accelerate, ↓/S to brake"} | Current: {segment.type} zone - {segment.speedLimit} mph limit
         </p>
       </div>
     </div>

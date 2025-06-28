@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Car, Clock, Trophy, RotateCcw, Play, Pause, Navigation } from 'lucide-react'
+import { Car, Clock, Trophy, RotateCcw, Play, Pause, Navigation, HelpCircle, ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react'
 
 interface ParkingGameProps {
   onComplete: (score: number) => void
@@ -57,6 +57,15 @@ const ParkingGame: React.FC<ParkingGameProps> = ({ onComplete, theme }) => {
   const [keys, setKeys] = useState<{[key: string]: boolean}>({})
   const [collisions, setCollisions] = useState(0)
   const [perfectParks, setPerfectParks] = useState(0)
+  const [showHelp, setShowHelp] = useState(false)
+  const [touchControls, setTouchControls] = useState(false)
+  const gameAreaRef = useRef<HTMLDivElement>(null)
+
+  // Check if user is on mobile
+  useEffect(() => {
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+    setTouchControls(isMobile)
+  }, [])
 
   // Initialize level
   const initializeLevel = useCallback((levelNum: number) => {
@@ -153,6 +162,20 @@ const ParkingGame: React.FC<ParkingGameProps> = ({ onComplete, theme }) => {
       window.removeEventListener('keyup', handleKeyUp)
     }
   }, [])
+
+  // Touch controls
+  const handleTouchControl = (control: 'up' | 'down' | 'left' | 'right', isPressed: boolean) => {
+    if (touchControls && gameState === 'playing') {
+      const keyMap = {
+        up: 'arrowup',
+        down: 'arrowdown',
+        left: 'arrowleft',
+        right: 'arrowright'
+      }
+      
+      setKeys(prev => ({ ...prev, [keyMap[control]]: isPressed }))
+    }
+  }
 
   // Car movement
   useEffect(() => {
@@ -374,7 +397,15 @@ const ParkingGame: React.FC<ParkingGameProps> = ({ onComplete, theme }) => {
           parallel, perpendicular, and angled parking. Avoid obstacles and park accurately!
         </p>
         <div className="bg-blue-50 rounded-2xl p-6 mb-6 border border-blue-200">
-          <h3 className="font-bold text-blue-900 mb-3">Controls:</h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-bold text-blue-900">Controls:</h3>
+            <button 
+              onClick={() => setShowHelp(!showHelp)}
+              className="text-blue-600 hover:text-blue-800 transition-colors"
+            >
+              <HelpCircle className="h-5 w-5" />
+            </button>
+          </div>
           <div className="grid grid-cols-2 gap-4 text-blue-800 text-sm">
             <div>
               <div className="font-medium">Movement:</div>
@@ -387,6 +418,28 @@ const ParkingGame: React.FC<ParkingGameProps> = ({ onComplete, theme }) => {
               <div>→/D - Turn Right</div>
             </div>
           </div>
+          
+          {showHelp && (
+            <motion.div 
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mt-4 pt-4 border-t border-blue-200"
+            >
+              <div className="text-blue-700 text-sm">
+                <p className="mb-2">
+                  <strong>Parking Tips:</strong>
+                </p>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>For parallel parking, position yourself next to the front car, then reverse at an angle</li>
+                  <li>For perpendicular parking, approach at a right angle and align with the space</li>
+                  <li>For angled parking, follow the angle of the space and pull in smoothly</li>
+                  <li>Always check your surroundings for obstacles</li>
+                  <li>Slow and steady wins the race - take your time!</li>
+                </ul>
+              </div>
+            </motion.div>
+          )}
         </div>
         <motion.button
           onClick={startGame}
@@ -434,6 +487,18 @@ const ParkingGame: React.FC<ParkingGameProps> = ({ onComplete, theme }) => {
             <div className="text-sm text-gray-600">Skill Score</div>
           </div>
         </div>
+        
+        <div className="bg-blue-50 rounded-2xl p-6 mb-6 border border-blue-200">
+          <h3 className="font-bold text-blue-900 mb-2">Parking Mastery Assessment:</h3>
+          <p className="text-blue-800 text-sm">
+            {percentage >= 80 
+              ? "Excellent parking skills! You've mastered different parking techniques with precision and care."
+              : percentage >= 60 
+              ? "Good parking skills. With more practice, you'll become even more confident with all parking types."
+              : "You've completed the parking challenges, but could use more practice. Remember to approach slowly and check your surroundings."}
+          </p>
+        </div>
+        
         <div className="flex justify-center space-x-4">
           <button
             onClick={restartGame}
@@ -489,7 +554,11 @@ const ParkingGame: React.FC<ParkingGameProps> = ({ onComplete, theme }) => {
       </div>
 
       {/* Game Area */}
-      <div className="relative bg-gray-300 rounded-3xl overflow-hidden shadow-2xl" style={{ height: '400px' }}>
+      <div 
+        ref={gameAreaRef}
+        className="relative bg-gray-300 rounded-3xl overflow-hidden shadow-2xl" 
+        style={{ height: '400px' }}
+      >
         {/* Parking lot surface */}
         <div className="absolute inset-0 bg-gray-300">
           {/* Parking space markings */}
@@ -567,6 +636,48 @@ const ParkingGame: React.FC<ParkingGameProps> = ({ onComplete, theme }) => {
           </motion.div>
         )}
 
+        {/* Touch Controls */}
+        {touchControls && gameState === 'playing' && !playerCar.isParked && (
+          <div className="absolute bottom-4 right-4 z-30 grid grid-cols-3 gap-2">
+            <div className="col-start-2">
+              <button
+                onTouchStart={() => handleTouchControl('up', true)}
+                onTouchEnd={() => handleTouchControl('up', false)}
+                className="w-12 h-12 bg-white/80 rounded-full flex items-center justify-center shadow-lg active:bg-gray-200"
+              >
+                <ArrowUp className="h-6 w-6 text-gray-700" />
+              </button>
+            </div>
+            <div className="col-start-1 col-end-2">
+              <button
+                onTouchStart={() => handleTouchControl('left', true)}
+                onTouchEnd={() => handleTouchControl('left', false)}
+                className="w-12 h-12 bg-white/80 rounded-full flex items-center justify-center shadow-lg active:bg-gray-200"
+              >
+                <ArrowLeft className="h-6 w-6 text-gray-700" />
+              </button>
+            </div>
+            <div className="col-start-2 col-end-3">
+              <button
+                onTouchStart={() => handleTouchControl('down', true)}
+                onTouchEnd={() => handleTouchControl('down', false)}
+                className="w-12 h-12 bg-white/80 rounded-full flex items-center justify-center shadow-lg active:bg-gray-200"
+              >
+                <ArrowDown className="h-6 w-6 text-gray-700" />
+              </button>
+            </div>
+            <div className="col-start-3 col-end-4">
+              <button
+                onTouchStart={() => handleTouchControl('right', true)}
+                onTouchEnd={() => handleTouchControl('right', false)}
+                className="w-12 h-12 bg-white/80 rounded-full flex items-center justify-center shadow-lg active:bg-gray-200"
+              >
+                <ArrowRight className="h-6 w-6 text-gray-700" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Pause Overlay */}
         {gameState === 'paused' && (
           <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-30">
@@ -606,7 +717,7 @@ const ParkingGame: React.FC<ParkingGameProps> = ({ onComplete, theme }) => {
             </button>
           </div>
           <p className="text-green-800 text-sm mt-2">
-            Attempts: {attempts} | Use arrow keys or WASD to control your car
+            Attempts: {attempts} | {touchControls ? "Use on-screen controls" : "Use arrow keys or WASD"} to control your car
           </p>
         </div>
       </div>
