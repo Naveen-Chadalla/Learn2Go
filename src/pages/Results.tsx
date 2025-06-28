@@ -4,18 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useData } from '../contexts/DataContext'
 import { motion } from 'framer-motion'
-import { 
-  TrendingUp, 
-  Award, 
-  Target, 
-  Clock, 
-  BookOpen,
-  Star,
-  Trophy,
-  Calendar,
-  BarChart3,
-  Certificate
-} from 'lucide-react'
+import { TrendingUp, Award, Target, Clock, BookOpen, Star, Trophy, Calendar, BarChart3, AlignCenterVertical as Certificate } from 'lucide-react'
 
 const Results: React.FC = () => {
   const { user } = useAuth()

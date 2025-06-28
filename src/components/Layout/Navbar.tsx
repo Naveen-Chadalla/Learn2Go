@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { useLanguage } from '../../contexts/LanguageContext'
 import { motion, AnimatePresence } from 'framer-motion'
-import { BarChart3, Settings, LogOut, User, Globe, AlertCircle, Crown, Trophy, MessageCircle, Sparkles, Certificate } from 'lucide-react'
+import { BarChart3, Settings, LogOut, User, Globe, AlertCircle, Crown, Trophy, MessageCircle, Sparkles, AlignCenterVertical as Certificate } from 'lucide-react'
 
 const Navbar: React.FC = () => {
   const { user, signOut, isAdmin, debugInfo } = useAuth()
