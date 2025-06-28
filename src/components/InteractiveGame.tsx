@@ -1,4 +1,5 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
 import GameSelector from './games/GameSelector'
 
 interface InteractiveGameProps {
@@ -19,19 +20,22 @@ const InteractiveGame: React.FC<InteractiveGameProps> = ({
   onComplete,
   theme
 }) => {
-  // Get lesson title from context or props
-  // For now, we'll determine the game type based on lesson ID or use a default
+  // Get lesson title from lessonId
   const getLessonTitle = () => {
-    // This could be passed as a prop or retrieved from context
-    // For now, we'll use a simple mapping based on lesson ID
-    const lessonTitles: Record<string, string> = {
-      'traffic-signals': 'Traffic Signals and Lights',
-      'pedestrian-safety': 'Pedestrian Safety and Crosswalks',
-      'parking-rules': 'Parking Rules and Techniques',
-      'speed-limits': 'Speed Limits and Highway Safety'
+    // Extract topic from lessonId or use a default
+    if (lessonId.includes('traffic-signal') || lessonId.includes('light')) {
+      return 'Traffic Signals and Lights'
+    } else if (lessonId.includes('pedestrian') || lessonId.includes('cross')) {
+      return 'Pedestrian Safety and Crosswalks'
+    } else if (lessonId.includes('park')) {
+      return 'Parking Rules and Techniques'
+    } else if (lessonId.includes('speed') || lessonId.includes('limit')) {
+      return 'Speed Limits and Highway Safety'
+    } else if (lessonId.includes('emergency')) {
+      return 'Emergency Procedures'
+    } else {
+      return 'Traffic Safety'
     }
-    
-    return lessonTitles[lessonId] || 'Traffic Safety'
   }
 
   return (

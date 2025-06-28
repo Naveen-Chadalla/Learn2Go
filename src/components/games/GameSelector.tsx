@@ -1,10 +1,10 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import TrafficLightGame from './TrafficLightGame'
 import PedestrianCrossingGame from './PedestrianCrossingGame'
 import ParkingGame from './ParkingGame'
 import SpeedLimitGame from './SpeedLimitGame'
-import { Play, Info, X } from 'lucide-react'
+import { Play, Info, HelpCircle, AlertTriangle } from 'lucide-react'
 
 interface GameSelectorProps {
   lessonId: string
@@ -28,6 +28,7 @@ const GameSelector: React.FC<GameSelectorProps> = ({
 }) => {
   const [selectedGame, setSelectedGame] = useState<string | null>(null)
   const [showInstructions, setShowInstructions] = useState(true)
+  const [showHelp, setShowHelp] = useState(false)
 
   // Determine which game to show based on lesson content
   const getGameType = () => {
@@ -53,7 +54,7 @@ const GameSelector: React.FC<GameSelectorProps> = ({
     if (country === 'IN') {
       return 'traffic-light'
     } else if (country === 'US') {
-      return 'parking'
+      return 'speed-limit'
     } else {
       return 'pedestrian'
     }
@@ -157,7 +158,12 @@ const GameSelector: React.FC<GameSelectorProps> = ({
       <div className="bg-blue-50 rounded-2xl p-6 mb-6 border border-blue-200">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-bold text-blue-900">How to Play:</h3>
-          <Info className="h-5 w-5 text-blue-600" />
+          <button 
+            onClick={() => setShowHelp(!showHelp)}
+            className="text-blue-600 hover:text-blue-800 transition-colors"
+          >
+            <HelpCircle className="h-5 w-5" />
+          </button>
         </div>
         <ul className="text-blue-800 text-left space-y-2">
           {currentGame?.controls.map((instruction, index) => (
@@ -167,6 +173,23 @@ const GameSelector: React.FC<GameSelectorProps> = ({
             </li>
           ))}
         </ul>
+        
+        {showHelp && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="mt-4 pt-4 border-t border-blue-200"
+          >
+            <div className="flex items-start space-x-2 text-sm">
+              <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+              <p className="text-blue-700">
+                This game uses keyboard controls. Make sure your keyboard is accessible and working properly.
+                If you're on a mobile device, you may need to use a physical keyboard or try a different device.
+              </p>
+            </div>
+          </motion.div>
+        )}
       </div>
       
       <motion.button
@@ -181,7 +204,7 @@ const GameSelector: React.FC<GameSelectorProps> = ({
       </motion.button>
       
       <p className="mt-4 text-sm text-gray-500">
-        This game is designed to reinforce the concepts from the lesson you just completed.
+        This game is designed to reinforce the concepts from "{lessonTitle}" that you just completed.
       </p>
     </div>
   )
