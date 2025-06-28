@@ -13,9 +13,7 @@ import {
   Crown, 
   Shield,
   Home,
-  X,
-  MapPin,
-  Globe
+  X
 } from 'lucide-react'
 import CountryLanguageSelector from '../../components/CountryLanguageSelector'
 
@@ -33,60 +31,10 @@ const Signup: React.FC = () => {
     message: string
     checked: boolean
   }>({ available: false, message: '', checked: false })
-  const [detectedCountry, setDetectedCountry] = useState<string | null>(null)
-  const [isDetectingLocation, setIsDetectingLocation] = useState(true)
-  const [locationError, setLocationError] = useState<string | null>(null)
   
   const { signUp, isAuthenticated, checkUsernameAvailability } = useAuth()
   const { t, setLanguage: setAppLanguage } = useLanguage()
   const navigate = useNavigate()
-
-  // Detect user's country on component mount
-  useEffect(() => {
-    const detectUserCountry = async () => {
-      setIsDetectingLocation(true)
-      setLocationError(null)
-      
-      try {
-        // Use ipapi.co for IP-based geolocation
-        const response = await fetch('https://ipapi.co/json/')
-        
-        if (!response.ok) {
-          throw new Error(`Failed to detect location: ${response.status}`)
-        }
-        
-        const data = await response.json()
-        
-        if (data.country_code) {
-          console.log('Detected country:', data.country_code)
-          setDetectedCountry(data.country_code)
-          setCountry(data.country_code)
-          
-          // Set default language based on country
-          if (data.country_code === 'IN') {
-            setLanguage('hi')
-          } else if (data.country_code === 'US' || data.country_code === 'GB') {
-            setLanguage('en')
-          } else {
-            setLanguage('en') // Default to English for other countries
-          }
-        } else {
-          throw new Error('Country code not found in response')
-        }
-      } catch (error) {
-        console.error('Error detecting country:', error)
-        setLocationError('Could not automatically detect your location. Please select manually.')
-        
-        // Set defaults
-        setCountry('US')
-        setLanguage('en')
-      } finally {
-        setIsDetectingLocation(false)
-      }
-    }
-    
-    detectUserCountry()
-  }, [])
 
   // Redirect if already authenticated
   React.useEffect(() => {
@@ -580,61 +528,8 @@ const Signup: React.FC = () => {
                 </motion.div>
               )}
 
-              {/* Location Detection Status */}
-              {isDetectingLocation ? (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center space-x-3"
-                >
-                  <div className="flex-shrink-0">
-                    <motion.div 
-                      className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full"
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                    />
-                  </div>
-                  <div>
-                    <p className="text-sm text-blue-700 font-medium">Detecting your location...</p>
-                    <p className="text-xs text-blue-600">This helps us provide localized traffic rules and content</p>
-                  </div>
-                </motion.div>
-              ) : detectedCountry ? (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center space-x-3"
-                >
-                  <MapPin className="h-5 w-5 text-green-600 flex-shrink-0" />
-                  <div>
-                    <p className="text-sm text-green-700 font-medium">
-                      Location detected automatically
-                    </p>
-                    <p className="text-xs text-green-600">
-                      You can change your country and language below if needed
-                    </p>
-                  </div>
-                </motion.div>
-              ) : locationError ? (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 flex items-center space-x-3"
-                >
-                  <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0" />
-                  <div>
-                    <p className="text-sm text-yellow-700 font-medium">{locationError}</p>
-                    <p className="text-xs text-yellow-600">
-                      We've set a default location for you
-                    </p>
-                  </div>
-                </motion.div>
-              ) : null}
-
               <CountryLanguageSelector
                 onSelectionChange={handleCountryLanguageChange}
-                initialCountry={country}
-                initialLanguage={language}
                 disabled={loading}
               />
 

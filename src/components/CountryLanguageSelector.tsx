@@ -22,25 +22,13 @@ const CountryLanguageSelector: React.FC<CountryLanguageSelectorProps> = ({
   const [countrySearch, setCountrySearch] = useState('')
   const [showCountryDropdown, setShowCountryDropdown] = useState(false)
   const [detectedLocation, setDetectedLocation] = useState<string>('')
-  const [isDetectingLocation, setIsDetectingLocation] = useState(true)
-  const [locationError, setLocationError] = useState<string | null>(null)
 
   // Detect user's location on component mount
   useEffect(() => {
     const detectLocation = async () => {
-      setIsDetectingLocation(true)
-      setLocationError(null)
-      
       try {
-        // Use ipapi.co for IP-based geolocation
         const response = await fetch('https://ipapi.co/json/')
-        
-        if (!response.ok) {
-          throw new Error(`Failed to detect location: ${response.status}`)
-        }
-        
         const data = await response.json()
-        
         if (data.country_code) {
           const detectedCountry = getCountryByCode(data.country_code.toUpperCase())
           if (detectedCountry) {
@@ -48,17 +36,10 @@ const CountryLanguageSelector: React.FC<CountryLanguageSelectorProps> = ({
             if (!initialCountry) {
               setSelectedCountry(data.country_code.toUpperCase())
             }
-          } else {
-            throw new Error('Country not supported in our system')
           }
-        } else {
-          throw new Error('Country code not found in response')
         }
       } catch (error) {
         console.warn('Could not detect location:', error)
-        setLocationError('Could not automatically detect your location')
-      } finally {
-        setIsDetectingLocation(false)
       }
     }
     
@@ -111,35 +92,7 @@ const CountryLanguageSelector: React.FC<CountryLanguageSelectorProps> = ({
   return (
     <div className="space-y-6">
       {/* Location Detection Display */}
-      {isDetectingLocation ? (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-center space-x-3"
-        >
-          <div className="flex-shrink-0">
-            <motion.div 
-              className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full"
-              animate={{ rotate: 360 }}
-              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-            />
-          </div>
-          <span className="text-sm text-blue-800">
-            Detecting your location...
-          </span>
-        </motion.div>
-      ) : locationError ? (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 flex items-center space-x-2"
-        >
-          <MapPin className="h-4 w-4 text-yellow-600" />
-          <span className="text-sm text-yellow-800">
-            {locationError}. Please select manually.
-          </span>
-        </motion.div>
-      ) : detectedLocation ? (
+      {detectedLocation && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -150,7 +103,7 @@ const CountryLanguageSelector: React.FC<CountryLanguageSelectorProps> = ({
             Detected location: <span className="font-medium">{detectedLocation}</span>
           </span>
         </motion.div>
-      ) : null}
+      )}
 
       {/* Country Selection with Search */}
       <div>

@@ -129,45 +129,6 @@ export const countries: Country[] = [
       { code: 'zh', name: 'Chinese (Simplified)', nativeName: '简体中文' },
       { code: 'en', name: 'English', nativeName: 'English' }
     ]
-  },
-  {
-    code: 'IT',
-    name: 'Italy',
-    flag: '🇮🇹',
-    languages: [
-      { code: 'it', name: 'Italian', nativeName: 'Italiano' },
-      { code: 'en', name: 'English', nativeName: 'English' }
-    ]
-  },
-  {
-    code: 'RU',
-    name: 'Russia',
-    flag: '🇷🇺',
-    languages: [
-      { code: 'ru', name: 'Russian', nativeName: 'Русский' },
-      { code: 'en', name: 'English', nativeName: 'English' }
-    ]
-  },
-  {
-    code: 'ZA',
-    name: 'South Africa',
-    flag: '🇿🇦',
-    languages: [
-      { code: 'en', name: 'English', nativeName: 'English' },
-      { code: 'af', name: 'Afrikaans', nativeName: 'Afrikaans' },
-      { code: 'zu', name: 'Zulu', nativeName: 'isiZulu' }
-    ]
-  },
-  {
-    code: 'SG',
-    name: 'Singapore',
-    flag: '🇸🇬',
-    languages: [
-      { code: 'en', name: 'English', nativeName: 'English' },
-      { code: 'zh', name: 'Chinese', nativeName: '中文' },
-      { code: 'ms', name: 'Malay', nativeName: 'Bahasa Melayu' },
-      { code: 'ta', name: 'Tamil', nativeName: 'தமிழ்' }
-    ]
   }
 ]
 
@@ -217,10 +178,6 @@ export const detectUserCountry = (): string => {
       return 'BR'
     case 'zh':
       return 'CN'
-    case 'it':
-      return 'IT'
-    case 'ru':
-      return 'RU'
     default:
       return 'US'
   }
@@ -252,40 +209,4 @@ export const getAllSupportedLanguages = (): Language[] => {
   })
   
   return Array.from(languageMap.values()).sort((a, b) => a.name.localeCompare(b.name))
-}
-
-// Get user's IP-based location
-export const getUserLocationFromIP = async (): Promise<{
-  country_code: string;
-  country_name: string;
-  city: string;
-  error?: string;
-}> => {
-  try {
-    const response = await fetch('https://ipapi.co/json/')
-    
-    if (!response.ok) {
-      throw new Error(`Failed to detect location: ${response.status}`)
-    }
-    
-    const data = await response.json()
-    
-    if (data.error) {
-      throw new Error(data.error || 'Unknown error detecting location')
-    }
-    
-    return {
-      country_code: data.country_code,
-      country_name: data.country_name,
-      city: data.city
-    }
-  } catch (error) {
-    console.error('Error detecting location:', error)
-    return {
-      country_code: 'US',
-      country_name: 'United States',
-      city: '',
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }
-  }
 }

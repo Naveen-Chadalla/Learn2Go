@@ -24,8 +24,7 @@ import {
   Clock,
   Sparkles,
   Star,
-  Play,
-  Bolt
+  Play
 } from 'lucide-react'
 import DynamicTagline from '../components/DynamicTagline'
 
@@ -272,24 +271,6 @@ const Home: React.FC = () => {
                 autoRefresh={true}
                 size="large"
               />
-            </motion.div>
-            
-            {/* Bolt.new Badge */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.65 }}
-              className="flex justify-center mb-8"
-            >
-              <a 
-                href="https://bolt.new" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="flex items-center space-x-2 bg-black text-white px-4 py-2 rounded-full hover:bg-gray-800 transition-colors"
-              >
-                <Bolt className="h-5 w-5 text-yellow-400" />
-                <span className="font-medium">Built with bolt.new</span>
-              </a>
             </motion.div>
             
             <motion.div 
@@ -585,24 +566,6 @@ const Home: React.FC = () => {
                 <ArrowRight className="h-6 w-6" />
               </Link>
             </motion.div>
-            
-            {/* Bolt.new Badge */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-              className="mt-8"
-            >
-              <a 
-                href="https://bolt.new" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="inline-flex items-center space-x-2 bg-black text-white px-4 py-2 rounded-full hover:bg-gray-800 transition-colors"
-              >
-                <Bolt className="h-5 w-5 text-yellow-400" />
-                <span className="font-medium">Built with bolt.new</span>
-              </a>
-            </motion.div>
           </motion.div>
         </div>
       </section>
@@ -746,24 +709,6 @@ const Home: React.FC = () => {
                       <span>Join the Movement</span>
                       <ArrowRight className="h-5 w-5" />
                     </Link>
-                  </motion.div>
-                  
-                  {/* Bolt.new Badge */}
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 }}
-                    className="mt-6"
-                  >
-                    <a 
-                      href="https://bolt.new" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center space-x-2 bg-black text-white px-4 py-2 rounded-full hover:bg-gray-800 transition-colors"
-                    >
-                      <Bolt className="h-5 w-5 text-yellow-400" />
-                      <span className="font-medium">Built with bolt.new</span>
-                    </a>
                   </motion.div>
                 </div>
               </div>

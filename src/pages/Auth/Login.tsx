@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { useLanguage } from '../../contexts/LanguageContext'
@@ -12,21 +12,13 @@ import {
   Shield, 
   Lock,
   Home,
-  ArrowLeft,
-  CheckCircle
+  ArrowLeft
 } from 'lucide-react'
-
-interface LocationState {
-  from?: { pathname: string };
-  message?: string;
-  username?: string;
-}
 
 const Login: React.FC = () => {
   const [username, setUsername] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [successMessage, setSuccessMessage] = useState('')
   const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({})
   
   const { signIn, isAuthenticated } = useAuth()
@@ -35,21 +27,7 @@ const Login: React.FC = () => {
   const location = useLocation()
   
   // Get the intended destination or default to dashboard
-  const state = location.state as LocationState | undefined
-  const from = state?.from?.pathname || '/dashboard'
-  const message = state?.message
-  const prefillUsername = state?.username
-
-  // Set prefilled username from redirect if available
-  useEffect(() => {
-    if (prefillUsername) {
-      setUsername(prefillUsername)
-    }
-    
-    if (message) {
-      setSuccessMessage(message)
-    }
-  }, [prefillUsername, message])
+  const from = location.state?.from?.pathname || '/dashboard'
 
   // Redirect if already authenticated
   React.useEffect(() => {
@@ -99,13 +77,9 @@ const Login: React.FC = () => {
       })
     }
     
-    // Clear general error and success message
+    // Clear general error
     if (error) {
       setError('')
-    }
-    
-    if (successMessage) {
-      setSuccessMessage('')
     }
   }
 
@@ -113,7 +87,6 @@ const Login: React.FC = () => {
     e.preventDefault()
     setLoading(true)
     setError('')
-    setSuccessMessage('')
     setValidationErrors({})
 
     // Validate username
@@ -289,19 +262,6 @@ const Login: React.FC = () => {
           transition={{ delay: 0.6 }}
         >
           <form className="space-y-6" onSubmit={handleSubmit}>
-            {/* Success Message */}
-            {successMessage && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-2xl flex items-center space-x-2"
-              >
-                <CheckCircle className="h-5 w-5 flex-shrink-0" />
-                <span className="text-sm">{successMessage}</span>
-              </motion.div>
-            )}
-            
-            {/* Error Message */}
             {error && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
