@@ -169,7 +169,7 @@ const Dashboard: React.FC = () => {
     <div 
       className="min-h-screen pt-16"
       style={{
-        background: `linear-gradient(135deg, ${countryTheme.primaryColor}08 0%, ${countryTheme.secondaryColor}08 100%)`
+        background: `linear-gradient(135deg, ${countryTheme.primaryColor}08 0%, ${countryTheme.secondaryColor}08 50%, transparent 100%)`
       }}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
