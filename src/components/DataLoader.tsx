@@ -11,19 +11,20 @@ const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
   const { isAuthenticated, user, loading: authLoading } = useAuth()
   const { loading: dataLoading, progress, isDataReady, data, error } = useData()
 
-  // STABLE: Only show loading when auth is loading OR when data is actively loading for authenticated users
+  // ULTRA SIMPLIFIED: Only show loading when auth is loading
+  // Once auth is done, show content immediately
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600 font-medium">Loading...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
         </div>
       </div>
     )
   }
 
-  // Show error state if data loading failed for authenticated users
+  // Show error state if data loading failed
   if (isAuthenticated && error && !isDataReady) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 via-white to-orange-50">
@@ -44,8 +45,8 @@ const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
     )
   }
 
-  // Show loading animation ONLY if authenticated user is actively loading data and data is not ready
-  if (isAuthenticated && dataLoading && !isDataReady && progress < 100) {
+  // Show loading animation only if data is loading and not ready
+  if (isAuthenticated && dataLoading && !isDataReady) {
     return (
       <LoadingAnimation 
         progress={Math.max(progress, 25)} 
@@ -54,7 +55,7 @@ const DataLoader: React.FC<DataLoaderProps> = ({ children }) => {
     )
   }
 
-  // Always render children when not in loading state
+  // Always render children when not loading
   return <>{children}</>
 }
 

@@ -33,7 +33,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
-  const [initialized, setInitialized] = useState(false)
   const [debugInfo, setDebugInfo] = useState({
     lastError: null as string | null,
     authStateChanges: 0,
@@ -226,13 +225,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [logDebugInfo])
 
-  // STABLE: Initialize auth state with enhanced session isolation and no blinking
+  // Initialize auth state with enhanced session isolation
   useEffect(() => {
     let mounted = true
 
     const initializeAuth = async () => {
       try {
-        logDebugInfo('Starting stable auth initialization with session isolation')
+        logDebugInfo('Starting auth initialization with session isolation')
         
         const { data: { session }, error } = await supabase.auth.getSession()
         
@@ -274,9 +273,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       } finally {
         if (mounted) {
-          setInitialized(true)
-          // STABLE: Set loading to false immediately after initialization
-          setLoading(false)
+          setTimeout(() => {
+            if (mounted) {
+              setLoading(false)
+            }
+          }, 100)
         }
       }
     }
@@ -322,10 +323,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(session.user)
       }
 
-      // STABLE: Only set loading to false if not already initialized
-      if (initialized) {
-        setLoading(false)
-      }
+      setLoading(false)
     })
 
     return () => {
@@ -333,7 +331,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       subscription.unsubscribe()
       logDebugInfo('Auth provider cleanup completed')
     }
-  }, [logDebugInfo, clearUserSessionData, syncUserProfile, user, initialized])
+  }, [logDebugInfo, clearUserSessionData, syncUserProfile, user])
 
   const signIn = async (username: string) => {
     try {
