@@ -16,6 +16,12 @@ import {
   CheckCircle
 } from 'lucide-react'
 
+interface LocationState {
+  from?: { pathname: string };
+  message?: string;
+  username?: string;
+}
+
 const Login: React.FC = () => {
   const [username, setUsername] = useState('')
   const [loading, setLoading] = useState(false)
@@ -29,25 +35,24 @@ const Login: React.FC = () => {
   const location = useLocation()
   
   // Get the intended destination or default to dashboard
-  const from = location.state?.from?.pathname || '/dashboard'
-  
-  // Check for success message from signup
+  const state = location.state as LocationState | undefined
+  const from = state?.from?.pathname || '/dashboard'
+  const message = state?.message
+  const prefillUsername = state?.username
+
+  // Set prefilled username from redirect if available
   useEffect(() => {
-    if (location.state?.message) {
-      setSuccessMessage(location.state.message)
-      
-      // Pre-fill username if provided from signup
-      if (location.state.username) {
-        setUsername(location.state.username)
-      }
-      
-      // Clear location state to prevent message showing on refresh
-      navigate(location.pathname, { replace: true })
+    if (prefillUsername) {
+      setUsername(prefillUsername)
     }
-  }, [location, navigate])
+    
+    if (message) {
+      setSuccessMessage(message)
+    }
+  }, [prefillUsername, message])
 
   // Redirect if already authenticated
-  useEffect(() => {
+  React.useEffect(() => {
     if (isAuthenticated) {
       navigate('/dashboard', { replace: true })
     }
@@ -127,24 +132,20 @@ const Login: React.FC = () => {
       sessionStorage.clear()
       localStorage.removeItem('learn2go-session')
       
-      const { data, error } = await signIn(username)
+      const { error } = await signIn(username)
       
       if (error) {
         console.error('[LOGIN] Authentication failed:', error)
         
         // Enhanced error handling with updated error codes
-        if (error.code === 'username_not_found') {
-          setError('Username not found. Please check your username or sign up for a new account.')
-        } else if (error.code === 'invalid_credentials') {
-          setError('Invalid username or password. Please check your credentials or sign up for a new account.')
+        if (error.code === 'invalid_credentials') {
+          setError('Invalid username or the account may not exist. Please check your username or sign up for a new account.')
         } else if (error.code === 'rate_limit') {
           setError('Too many login attempts. Please wait a few minutes before trying again.')
         } else if (error.code === 'network_error') {
           setError('Network error. Please check your connection and try again.')
         } else if (error.code === 'email_not_confirmed') {
           setError('Please verify your email address before signing in.')
-        } else if (error.code === 'auth_mismatch') {
-          setError('Authentication failed. The user account may not be properly set up. Please try signing up again.')
         } else {
           setError(error.message || 'Login failed. Please try again.')
         }
