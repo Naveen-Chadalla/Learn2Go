@@ -217,7 +217,7 @@ const RoadSafetyQuest: React.FC<RoadSafetyQuestProps> = ({
       question: 'You\'re approaching a yellow traffic light. What should you do?',
       options: ['Speed up to get through', 'Continue at the same speed', 'Prepare to stop if safe to do so', 'Brake suddenly'],
       correctAnswer: 2,
-      explanation: 'Prepare to stop if it's safe to do so. Yellow lights indicate the signal will soon turn red.'
+      explanation: 'Prepare to stop if it\'s safe to do so. Yellow lights indicate the signal will soon turn red.'
     }
   ];
   
