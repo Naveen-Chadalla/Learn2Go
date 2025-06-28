@@ -44,13 +44,19 @@ export const useActivityTracking = () => {
 
       // Set up heartbeat to keep activity updated
       const heartbeatInterval = setInterval(() => {
-        activityTracker.updateActivityHeartbeat()
+        if (activityTracker.updateActivityHeartbeat) {
+          activityTracker.updateActivityHeartbeat()
+        }
       }, 60000) // Every minute
 
       return () => {
         clearInterval(heartbeatInterval)
         // End session when component unmounts or user logs out
-        activityTracker.stopTracking()
+        try {
+          activityTracker.stopTracking()
+        } catch (error) {
+          console.error('[ACTIVITY] Failed to stop tracking:', error)
+        }
       }
     }
   }, [isAuthenticated, user, getCurrentUsername])
@@ -65,8 +71,11 @@ export const useActivityTracking = () => {
         return
       }
 
-      const pageTitle = getPageTitle(location.pathname)
-      activityTracker.logPageView(location.pathname)
+      try {
+        activityTracker.logPageView(location.pathname)
+      } catch (error) {
+        console.error('[ACTIVITY] Failed to log page view:', error)
+      }
     }
   }, [location.pathname, isAuthenticated, user, getCurrentUsername])
 
@@ -74,14 +83,22 @@ export const useActivityTracking = () => {
   const trackLessonStart = useCallback((lessonId: string, lessonTitle: string) => {
     const username = getCurrentUsername()
     if (username) {
-      activityTracker.logLessonStart(lessonId)
+      try {
+        activityTracker.logLessonStart(lessonId)
+      } catch (error) {
+        console.error('[ACTIVITY] Failed to track lesson start:', error)
+      }
     }
   }, [getCurrentUsername])
 
   const trackLessonComplete = useCallback((lessonId: string, lessonTitle: string, timeSpent: number) => {
     const username = getCurrentUsername()
     if (username) {
-      activityTracker.logLessonComplete(lessonId, 0, timeSpent)
+      try {
+        activityTracker.logLessonComplete(lessonId, 0, timeSpent)
+      } catch (error) {
+        console.error('[ACTIVITY] Failed to track lesson complete:', error)
+      }
     }
   }, [getCurrentUsername])
 
@@ -89,14 +106,22 @@ export const useActivityTracking = () => {
   const trackQuizAttempt = useCallback((lessonId: string, quizData: any) => {
     const username = getCurrentUsername()
     if (username) {
-      activityTracker.logQuizAttempt(lessonId, quizData.score || 0, quizData.totalQuestions || 0)
+      try {
+        activityTracker.logQuizAttempt(lessonId, quizData.score || 0, quizData.totalQuestions || 0)
+      } catch (error) {
+        console.error('[ACTIVITY] Failed to track quiz attempt:', error)
+      }
     }
   }, [getCurrentUsername])
 
   const trackQuizComplete = useCallback((lessonId: string, score: number, timeSpent: number, quizData: any) => {
     const username = getCurrentUsername()
     if (username) {
-      activityTracker.logQuizAttempt(lessonId, score, quizData.totalQuestions || 0)
+      try {
+        activityTracker.logQuizAttempt(lessonId, score, quizData.totalQuestions || 0)
+      } catch (error) {
+        console.error('[ACTIVITY] Failed to track quiz complete:', error)
+      }
     }
   }, [getCurrentUsername])
 
@@ -104,7 +129,11 @@ export const useActivityTracking = () => {
   const trackGamePlay = useCallback((gameId: string, gameName: string, score: number, timeSpent: number) => {
     const username = getCurrentUsername()
     if (username) {
-      activityTracker.logGamePlay(gameName, score, timeSpent)
+      try {
+        activityTracker.logGamePlay(gameName, score, timeSpent)
+      } catch (error) {
+        console.error('[ACTIVITY] Failed to track game play:', error)
+      }
     }
   }, [getCurrentUsername])
 

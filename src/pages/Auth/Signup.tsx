@@ -20,8 +20,8 @@ import CountryLanguageSelector from '../../components/CountryLanguageSelector'
 const Signup: React.FC = () => {
   const [step, setStep] = useState(1)
   const [username, setUsername] = useState('')
-  const [country, setCountry] = useState('')
-  const [language, setLanguage] = useState('')
+  const [country, setCountry] = useState('US')
+  const [language, setLanguage] = useState('en')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({})
