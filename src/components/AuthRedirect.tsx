@@ -52,13 +52,13 @@ const AuthRedirect: React.FC<AuthRedirectProps> = ({ children }) => {
     }
   }, [isAuthenticated, loading, location.pathname, navigate, user])
 
-  // SIMPLIFIED loading screen - no blinking
+  // STABLE loading screen - no animations that cause blinking
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
+          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600 font-medium">Loading...</p>
         </div>
       </div>
     )

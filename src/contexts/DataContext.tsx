@@ -183,7 +183,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(false)
   }, [user])
 
-  // Enhanced data loading with session isolation
+  // STABLE: Enhanced data loading with session isolation and no blinking
   const loadData = useCallback(async () => {
     if (!user || !isAuthenticated || initialized) {
       return
@@ -195,7 +195,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return
     }
 
-    console.log(`[DATA] Starting isolated data load for user: ${currentUser}`)
+    console.log(`[DATA] Starting stable isolated data load for user: ${currentUser}`)
     setLoading(true)
     setError(null)
     setProgress(0)
@@ -248,7 +248,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setInitialized(true)
       setLoading(false)
       
-      console.log(`[DATA] Data load completed successfully for user: ${currentUser}`)
+      console.log(`[DATA] Stable data load completed successfully for user: ${currentUser}`)
 
     } catch (error) {
       console.error(`[DATA] Data load failed for user ${currentUser}:`, error)
@@ -273,6 +273,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       })
       setIsDataReady(true)
+      setInitialized(true)
     }
   }, [user, isAuthenticated, initialized])
 
@@ -387,7 +388,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return dataPreloader.getCacheStats()
   }, [])
 
-  // Initialize data when user becomes authenticated with session isolation
+  // STABLE: Initialize data when user becomes authenticated with session isolation and no blinking
   useEffect(() => {
     if (isAuthenticated && user && !initialized) {
       // Verify user session isolation
@@ -399,10 +400,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         clearUserData()
       }
       
-      // Use setTimeout to prevent any potential race conditions
-      setTimeout(() => {
-        loadData()
-      }, 0)
+      // STABLE: Load data immediately without timeout to prevent blinking
+      loadData()
     } else if (!isAuthenticated) {
       // Reset everything when user logs out with session isolation
       clearUserData()
