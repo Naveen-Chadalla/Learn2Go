@@ -2,8 +2,8 @@ import React, { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { useLanguage } from '../../contexts/LanguageContext'
-import { BarChart3, Settings, LogOut, User, Globe, AlertCircle, Crown, Trophy, MessageCircle, Sparkles } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { BarChart3, Settings, LogOut, User, Globe, AlertCircle, Crown, Trophy, MessageCircle, Sparkles, Certificate } from 'lucide-react'
 
 const Navbar: React.FC = () => {
   const { user, signOut, isAdmin, debugInfo } = useAuth()
@@ -136,6 +136,20 @@ const Navbar: React.FC = () => {
                 >
                   <Trophy className="h-4 w-4" />
                   <span className="font-medium">Leaderboard</span>
+                </Link>
+              </motion.div>
+
+              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                <Link
+                  to="/certificate"
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-2xl transition-all duration-300 ${
+                    isActive('/certificate') 
+                      ? 'bg-gradient-to-r from-amber-500 to-yellow-600 text-white shadow-lg shadow-amber-500/25' 
+                      : 'text-gray-600 hover:text-amber-600 hover:bg-amber-50/80 backdrop-blur-sm'
+                  }`}
+                >
+                  <Certificate className="h-4 w-4" />
+                  <span className="font-medium">Certificate</span>
                 </Link>
               </motion.div>
 
@@ -351,6 +365,15 @@ const Navbar: React.FC = () => {
             >
               <Trophy className="h-5 w-5" />
               <span className="text-xs mt-1 font-medium">Leaderboard</span>
+            </Link>
+            <Link
+              to="/certificate"
+              className={`flex flex-col items-center py-2 px-3 rounded-2xl transition-all duration-300 ${
+                isActive('/certificate') ? 'text-amber-600 bg-amber-50' : 'text-gray-600'
+              }`}
+            >
+              <Certificate className="h-5 w-5" />
+              <span className="text-xs mt-1 font-medium">Certificate</span>
             </Link>
             {isAdmin && (
               <Link

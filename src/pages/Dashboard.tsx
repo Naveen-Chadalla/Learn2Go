@@ -22,7 +22,8 @@ import {
   Users,
   Calendar,
   Flame,
-  AlertCircle
+  AlertCircle,
+  Certificate
 } from 'lucide-react'
 import { getCountryByCode, getLanguageByCode } from '../types/countries'
 import DynamicTagline from '../components/DynamicTagline'
@@ -33,6 +34,7 @@ const Dashboard: React.FC = () => {
   const { data, refreshData, loading, error } = useData()
   const [refreshing, setRefreshing] = useState(false)
   const [dashboardError, setDashboardError] = useState<string | null>(null)
+  const [showCertificatePrompt, setShowCertificatePrompt] = useState(false)
 
   // Ensure user is authenticated
   useEffect(() => {
@@ -49,6 +51,19 @@ const Dashboard: React.FC = () => {
     // Clear any previous errors
     setDashboardError(null)
   }, [isAuthenticated, user])
+
+  // Check if user has completed all lessons to show certificate prompt
+  useEffect(() => {
+    if (data.lessons.length > 0 && data.userProgress.length > 0) {
+      const completedLessons = data.userProgress.filter(p => p.completed).length
+      const totalLessons = data.lessons.length
+      
+      // Show certificate prompt if user has completed at least 80% of lessons
+      if (completedLessons >= Math.floor(totalLessons * 0.8)) {
+        setShowCertificatePrompt(true)
+      }
+    }
+  }, [data.lessons, data.userProgress])
 
   const handleRefresh = async () => {
     setRefreshing(true)
@@ -214,6 +229,46 @@ const Dashboard: React.FC = () => {
             </motion.button>
           </div>
         </motion.div>
+
+        {/* Certificate Prompt (if eligible) */}
+        {showCertificatePrompt && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="mb-8 bg-gradient-to-r from-yellow-50 to-amber-50 rounded-3xl p-6 border-2 border-yellow-200 shadow-xl"
+          >
+            <div className="flex flex-col md:flex-row items-center justify-between">
+              <div className="flex items-center space-x-4 mb-4 md:mb-0">
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+                  className="text-4xl"
+                >
+                  <Certificate className="h-12 w-12 text-yellow-500" />
+                </motion.div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-1">Certificate Available!</h3>
+                  <p className="text-gray-600">
+                    You've completed enough lessons to receive your official certificate.
+                  </p>
+                </div>
+              </div>
+              <motion.div
+                whileHover={{ scale: 1.05, y: -2 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <Link
+                  to="/certificate"
+                  className="bg-gradient-to-r from-yellow-500 to-amber-600 text-white px-6 py-3 rounded-xl hover:from-yellow-600 hover:to-amber-700 transition-all duration-300 shadow-lg hover:shadow-xl font-bold flex items-center space-x-2"
+                >
+                  <Award className="h-5 w-5" />
+                  <span>View Your Certificate</span>
+                </Link>
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
 
         {/* Dynamic Tagline */}
         <motion.div

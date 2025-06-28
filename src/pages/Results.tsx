@@ -1,4 +1,5 @@
 import React from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useData } from '../contexts/DataContext'
@@ -12,7 +13,8 @@ import {
   Star,
   Trophy,
   Calendar,
-  BarChart3
+  BarChart3,
+  Certificate
 } from 'lucide-react'
 
 const Results: React.FC = () => {
@@ -79,9 +81,20 @@ const Results: React.FC = () => {
     }
   ]
 
+  // Check if user is eligible for certificate
+  const isEligibleForCertificate = () => {
+    if (data.lessons.length === 0) return false
+    
+    const completedLessons = data.userProgress.filter(p => p.completed).length
+    const totalLessons = data.lessons.length
+    
+    // Eligible if completed at least 80% of lessons
+    return completedLessons >= Math.floor(totalLessons * 0.8)
+  }
+
   return (
     <div 
-      className="min-h-screen"
+      className="min-h-screen pt-16"
       style={{
         background: `linear-gradient(135deg, ${countryTheme.primaryColor}10 0%, ${countryTheme.secondaryColor}10 100%)`
       }}
@@ -101,6 +114,46 @@ const Results: React.FC = () => {
             Track your learning progress and quiz performance
           </p>
         </motion.div>
+
+        {/* Certificate Eligibility Banner */}
+        {isEligibleForCertificate() && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="mb-8 bg-gradient-to-r from-yellow-50 to-amber-50 rounded-3xl p-6 border-2 border-yellow-200 shadow-xl"
+          >
+            <div className="flex flex-col md:flex-row items-center justify-between">
+              <div className="flex items-center space-x-4 mb-4 md:mb-0">
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+                  className="text-4xl"
+                >
+                  <Certificate className="h-12 w-12 text-yellow-500" />
+                </motion.div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-1">Congratulations! 🎉</h3>
+                  <p className="text-gray-600">
+                    You've earned your Certificate of Completion for the Traffic Safety Program!
+                  </p>
+                </div>
+              </div>
+              <motion.div
+                whileHover={{ scale: 1.05, y: -2 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <Link
+                  to="/certificate"
+                  className="bg-gradient-to-r from-yellow-500 to-amber-600 text-white px-6 py-3 rounded-xl hover:from-yellow-600 hover:to-amber-700 transition-all duration-300 shadow-lg hover:shadow-xl font-bold flex items-center space-x-2"
+                >
+                  <Award className="h-5 w-5" />
+                  <span>View Your Certificate</span>
+                </Link>
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
 
         {/* Stats Cards */}
         <motion.div

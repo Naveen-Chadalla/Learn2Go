@@ -19,6 +19,7 @@ import LessonDetail from './pages/Lessons/LessonDetail'
 import Results from './pages/Results'
 import Leaderboard from './pages/Leaderboard'
 import AdminDashboard from './pages/Admin/AdminDashboard'
+import Certificate from './pages/Certificate'
 
 // Activity tracking wrapper component
 const ActivityTrackingWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -73,6 +74,14 @@ function App() {
                         element={
                           <ProtectedRoute>
                             <Leaderboard />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/certificate"
+                        element={
+                          <ProtectedRoute>
+                            <Certificate />
                           </ProtectedRoute>
                         }
                       />
