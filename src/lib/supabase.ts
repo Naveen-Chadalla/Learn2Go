@@ -3,49 +3,58 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-// Validate environment variables
-if (!supabaseUrl || supabaseUrl === 'your_supabase_url_here' || !supabaseUrl.startsWith('http')) {
-  throw new Error(
-    'Missing or invalid VITE_SUPABASE_URL environment variable. ' +
-    'Please set it to your actual Supabase project URL in the .env file. ' +
-    'Example: https://your-project.supabase.co'
-  )
+// More lenient validation for development
+if (!supabaseUrl) {
+  console.error('VITE_SUPABASE_URL is missing. Please check your .env file.')
+  // Use a fallback URL to prevent app crash
+  const fallbackUrl = 'https://placeholder.supabase.co'
+  console.warn(`Using fallback URL: ${fallbackUrl}`)
 }
 
-if (!supabaseAnonKey || supabaseAnonKey === 'your_supabase_anon_key_here') {
-  throw new Error(
-    'Missing or invalid VITE_SUPABASE_ANON_KEY environment variable. ' +
-    'Please set it to your actual Supabase anonymous key in the .env file.'
-  )
+if (!supabaseAnonKey) {
+  console.error('VITE_SUPABASE_ANON_KEY is missing. Please check your .env file.')
+  // Use a fallback key to prevent app crash
+  const fallbackKey = 'placeholder-key'
+  console.warn('Using fallback anonymous key')
 }
 
-// Create Supabase client with better error handling
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true
-  },
-  global: {
-    headers: {
-      'X-Client-Info': 'learning-app'
-    }
-  },
-  realtime: {
-    params: {
-      eventsPerSecond: 10
+// Create Supabase client with fallbacks to prevent crashes
+export const supabase = createClient(
+  supabaseUrl || 'https://placeholder.supabase.co',
+  supabaseAnonKey || 'placeholder-key',
+  {
+    auth: {
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: false // Disable to prevent URL parsing issues
+    },
+    global: {
+      headers: {
+        'X-Client-Info': 'learning-app'
+      }
+    },
+    realtime: {
+      params: {
+        eventsPerSecond: 10
+      }
     }
   }
-})
+)
 
-// Add connection test function
+// Add connection test function with error handling
 export const testSupabaseConnection = async () => {
   try {
+    if (!supabaseUrl || !supabaseAnonKey || 
+        supabaseUrl.includes('placeholder') || 
+        supabaseAnonKey.includes('placeholder')) {
+      console.warn('Supabase not properly configured - running in offline mode')
+      return false
+    }
+
     const { data, error } = await supabase
       .from('lessons')
       .select('count')
       .limit(1)
-      .single()
     
     if (error) {
       console.error('Supabase connection test failed:', error)

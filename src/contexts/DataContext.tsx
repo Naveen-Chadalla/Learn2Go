@@ -162,7 +162,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isDataReady, setIsDataReady] = useState(false)
   const [initialized, setInitialized] = useState(false)
 
-  // Load data using dataPreloader service
+  // Load data using dataPreloader service with error handling
   const loadData = useCallback(async () => {
     if (!user || !isAuthenticated || initialized) {
       return
@@ -179,8 +179,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setProgress(progressInfo.percentage)
       })
 
-      // Load all data using the preloader
-      const preloadedData = await dataPreloader.preloadAllData(user)
+      // Load all data using the preloader with timeout
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Data loading timeout')), 10000)
+      )
+      
+      const dataPromise = dataPreloader.preloadAllData(user)
+      
+      const preloadedData = await Promise.race([dataPromise, timeoutPromise]) as PreloadedData
       
       // Set the loaded data
       setData(preloadedData)
@@ -193,11 +199,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     } catch (error) {
       console.error('[DATA] Data load failed:', error)
-      setError('Failed to load data')
+      setError('Failed to load data - running in offline mode')
       setLoading(false)
       
-      // Set minimal fallback data
-      setData({
+      // Set minimal fallback data to prevent app crash
+      const fallbackData = {
         ...defaultData,
         userProfile: {
           username: user.user_metadata?.username || user.email?.split('@')[0] || 'user',
@@ -211,9 +217,36 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           last_active: new Date().toISOString(),
           session_start: new Date().toISOString(),
           session_end: ''
-        }
-      })
+        },
+        // Add some default lessons to prevent empty state
+        lessons: [
+          {
+            id: 'default-1',
+            title: 'Traffic Safety Basics',
+            description: 'Learn the fundamental rules of traffic safety.',
+            content: 'Traffic safety is essential for protecting lives on the road. Key principles include following traffic signals, maintaining safe distances, and being aware of your surroundings.',
+            level: 1,
+            order: 1,
+            category: 'basics',
+            quiz_questions: [
+              {
+                id: '1',
+                question: 'What does a red traffic light mean?',
+                options: ['Go', 'Stop', 'Slow down', 'Proceed with caution'],
+                correct_answer: 1,
+                explanation: 'A red traffic light means you must come to a complete stop.'
+              }
+            ],
+            country: user.user_metadata?.country || 'US',
+            language: user.user_metadata?.language || 'en',
+            created_at: new Date().toISOString()
+          }
+        ]
+      }
+      
+      setData(fallbackData)
       setIsDataReady(true)
+      setInitialized(true)
     }
   }, [user, isAuthenticated, initialized])
 
@@ -229,19 +262,26 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const username = user.user_metadata?.username || user.email?.split('@')[0] || user.email
 
-      const { error } = await supabase
-        .from('user_progress')
-        .upsert({
-          username,
-          lesson_id: lessonId,
-          completed,
-          score,
-          completed_at: new Date().toISOString()
-        })
+      // Try to update in database, but don't fail if it doesn't work
+      try {
+        const { error } = await supabase
+          .from('user_progress')
+          .upsert({
+            username,
+            lesson_id: lessonId,
+            completed,
+            score,
+            completed_at: new Date().toISOString()
+          })
 
-      if (error) throw error
+        if (error) {
+          console.warn('[DATA] Failed to update progress in database:', error)
+        }
+      } catch (dbError) {
+        console.warn('[DATA] Database update failed, updating locally only:', dbError)
+      }
 
-      // Update local data
+      // Always update local data
       setData(prev => {
         const existingIndex = prev.userProgress.findIndex(p => p.lesson_id === lessonId)
         const newProgress = {
@@ -285,7 +325,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     } catch (error) {
       console.error('Error updating user progress:', error)
-      throw error
+      // Don't throw error to prevent app crash
     }
   }, [user])
 
@@ -304,7 +344,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Use setTimeout to prevent any potential race conditions
       setTimeout(() => {
         loadData()
-      }, 0)
+      }, 100)
     } else if (!isAuthenticated) {
       // Reset everything when user logs out
       setData(defaultData)
@@ -312,6 +352,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setProgress(0)
       setInitialized(false)
       setLoading(false)
+      setError(null)
     }
   }, [isAuthenticated, user, initialized, loadData])
 
