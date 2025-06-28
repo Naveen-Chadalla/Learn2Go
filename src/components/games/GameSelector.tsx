@@ -178,18 +178,11 @@ const GameSelector: React.FC<GameSelectorProps> = ({
     setSelectedGame(gameType);
   };
 
-  // Ensure score is properly passed to parent component
-  const handleGameComplete = (score: number) => {
-    // Validate score is a number between 0-100
-    const validScore = Math.min(100, Math.max(0, Math.round(score)));
-    onComplete(validScore);
-  };
-
   const renderGame = () => {
     if (gameMode === 'modern') {
       return <TrafficSafetyGame 
         topic={lessonTitle} 
-        onComplete={handleGameComplete} 
+        onComplete={onComplete} 
         theme={theme} 
         language={language}
       />;
@@ -197,15 +190,15 @@ const GameSelector: React.FC<GameSelectorProps> = ({
     
     switch (selectedGame) {
       case 'traffic-light':
-        return <TrafficLightGame onComplete={handleGameComplete} theme={theme} />;
+        return <TrafficLightGame onComplete={onComplete} theme={theme} />;
       case 'pedestrian':
-        return <PedestrianCrossingGame onComplete={handleGameComplete} theme={theme} />;
+        return <PedestrianCrossingGame onComplete={onComplete} theme={theme} />;
       case 'parking':
-        return <ParkingGame onComplete={handleGameComplete} theme={theme} />;
+        return <ParkingGame onComplete={onComplete} theme={theme} />;
       case 'speed-limit':
-        return <SpeedLimitGame onComplete={handleGameComplete} theme={theme} />;
+        return <SpeedLimitGame onComplete={onComplete} theme={theme} />;
       case 'emergency':
-        return <EmergencyResponseGame onComplete={handleGameComplete} theme={theme} />;
+        return <EmergencyResponseGame onComplete={onComplete} theme={theme} />;
       default:
         return null;
     }

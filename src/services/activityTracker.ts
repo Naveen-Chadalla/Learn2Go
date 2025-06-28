@@ -5,51 +5,27 @@ export class ActivityTracker {
   private sessionId: string | null = null
   private username: string | null = null
   private isActive = false
-  private isPausedByNetwork = false
 
   constructor() {
     this.sessionId = this.generateSessionId()
-    this.setupNetworkListeners()
   }
 
   private generateSessionId(): string {
     return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
   }
 
-  private setupNetworkListeners() {
-    // Listen for online/offline events
-    window.addEventListener('online', () => {
-      console.log('Network connectivity restored')
-      this.isPausedByNetwork = false
-      if (this.isActive && this.username && !this.heartbeatInterval) {
-        console.log('Resuming activity tracking...')
-        this.startHeartbeat()
-      }
-    })
-
-    window.addEventListener('offline', () => {
-      console.log('Network connectivity lost')
-      this.isPausedByNetwork = true
-      this.pauseTracking()
-    })
-  }
-
   async startTracking(username: string) {
     this.username = username
     this.isActive = true
     
-    // Only start heartbeat if we're online
-    if (navigator.onLine && !this.isPausedByNetwork) {
-      this.startHeartbeat()
-      
-      // Log session start
-      await this.logActivity('session_start', {
-        session_id: this.sessionId,
-        timestamp: new Date().toISOString()
-      })
-    } else {
-      console.log('Starting tracking in offline mode - will resume when online')
-    }
+    // Start heartbeat with error handling
+    this.startHeartbeat()
+    
+    // Log session start
+    await this.logActivity('session_start', {
+      session_id: this.sessionId,
+      timestamp: new Date().toISOString()
+    })
   }
 
   async stopTracking() {
@@ -60,7 +36,7 @@ export class ActivityTracker {
       this.heartbeatInterval = null
     }
 
-    if (this.username && this.sessionId && navigator.onLine && !this.isPausedByNetwork) {
+    if (this.username && this.sessionId) {
       await this.logActivity('session_end', {
         session_id: this.sessionId,
         timestamp: new Date().toISOString()
@@ -74,7 +50,7 @@ export class ActivityTracker {
     }
 
     this.heartbeatInterval = setInterval(async () => {
-      if (this.isActive && this.username && navigator.onLine && !this.isPausedByNetwork) {
+      if (this.isActive && this.username) {
         await this.updateActivityHeartbeat()
       }
     }, 30000) // 30 seconds
@@ -82,11 +58,6 @@ export class ActivityTracker {
 
   async updateActivityHeartbeat() {
     if (!this.username || !this.sessionId) return
-
-    // Check network status before attempting any requests
-    if (!navigator.onLine || this.isPausedByNetwork) {
-      return
-    }
 
     try {
       const { error } = await supabase
@@ -120,13 +91,12 @@ export class ActivityTracker {
         .eq('username', this.username)
 
     } catch (err) {
-      console.error('Activity heartbeat failed:', err)
-      
-      // If it's a network error, pause tracking and let network events handle resumption
+      // Handle network connectivity issues differently from other errors
       if (err instanceof TypeError && err.message.includes('Failed to fetch')) {
-        console.warn('Network connectivity issue detected, pausing activity tracking')
-        this.isPausedByNetwork = true
+        console.warn('Network connectivity issue detected, pausing activity tracking temporarily')
         this.pauseTracking()
+      } else {
+        console.error('Activity heartbeat failed:', err)
       }
     }
   }
@@ -136,17 +106,18 @@ export class ActivityTracker {
       clearInterval(this.heartbeatInterval)
       this.heartbeatInterval = null
     }
-    // Note: Resumption is now handled by network event listeners, not timeouts
+    
+    // Retry connection after 60 seconds
+    setTimeout(() => {
+      if (this.isActive && this.username) {
+        console.log('Attempting to resume activity tracking...')
+        this.startHeartbeat()
+      }
+    }, 60000)
   }
 
   async logActivity(activityType: string, details: any = {}) {
     if (!this.username) return
-
-    // Check network status before attempting any requests
-    if (!navigator.onLine || this.isPausedByNetwork) {
-      console.log(`Skipping activity log (${activityType}) - offline or network paused`)
-      return
-    }
 
     try {
       const { error } = await supabase
@@ -166,11 +137,7 @@ export class ActivityTracker {
       }
     } catch (err) {
       console.error('Activity logging failed:', err)
-      
-      // If it's a network error, mark as paused
-      if (err instanceof TypeError && err.message.includes('Failed to fetch')) {
-        this.isPausedByNetwork = true
-      }
+      // Silently handle errors to prevent disrupting user experience
     }
   }
 
