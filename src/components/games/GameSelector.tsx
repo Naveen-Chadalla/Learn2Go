@@ -6,7 +6,6 @@ import ParkingGame from './ParkingGame';
 import SpeedLimitGame from './SpeedLimitGame';
 import EmergencyResponseGame from './EmergencyResponseGame';
 import TrafficSafetyGame from './TrafficSafetyGame';
-import RoadSafetyQuest from './RoadSafetyQuest';
 import { Play, HelpCircle, AlertTriangle, Gamepad, Keyboard, Smartphone, Info, Settings } from 'lucide-react';
 
 interface GameSelectorProps {
@@ -55,10 +54,6 @@ const GameSelector: React.FC<GameSelectorProps> = ({
     const title = lessonTitle.toLowerCase();
     const id = lessonId.toLowerCase();
     
-    if (title.includes('introduction') || title.includes('intro') || title.includes('basics')) {
-      return 'road-safety-quest';
-    }
-    
     if (title.includes('traffic light') || title.includes('signal') || id.includes('signal') || title.includes('intersection')) {
       return 'traffic-light';
     }
@@ -92,22 +87,6 @@ const GameSelector: React.FC<GameSelectorProps> = ({
   const gameType = getGameType();
 
   const gameOptions = [
-    {
-      id: 'road-safety-quest',
-      name: 'Road Safety Quest',
-      description: 'Navigate through the city while following traffic rules and completing safety challenges',
-      icon: '🚦',
-      controls: [
-        'Use arrow keys to navigate through the city',
-        'Complete checkpoints and safety challenges',
-        'Follow traffic rules to earn points',
-        'Avoid violations that reduce your score'
-      ],
-      mobileControls: [
-        'Tap arrow buttons to move your character',
-        'Complete challenges by selecting correct answers'
-      ]
-    },
     {
       id: 'traffic-light',
       name: 'Traffic Light Control',
@@ -201,13 +180,6 @@ const GameSelector: React.FC<GameSelectorProps> = ({
 
   const renderGame = () => {
     if (gameMode === 'modern') {
-      if (gameType === 'road-safety-quest') {
-        return <RoadSafetyQuest 
-          onComplete={onComplete} 
-          theme={theme} 
-          language={language}
-        />;
-      }
       return <TrafficSafetyGame 
         topic={lessonTitle} 
         onComplete={onComplete} 
@@ -217,8 +189,6 @@ const GameSelector: React.FC<GameSelectorProps> = ({
     }
     
     switch (selectedGame) {
-      case 'road-safety-quest':
-        return <RoadSafetyQuest onComplete={onComplete} theme={theme} language={language} />;
       case 'traffic-light':
         return <TrafficLightGame onComplete={onComplete} theme={theme} />;
       case 'pedestrian':
