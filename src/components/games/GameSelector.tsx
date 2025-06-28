@@ -6,6 +6,7 @@ import ParkingGame from './ParkingGame';
 import SpeedLimitGame from './SpeedLimitGame';
 import EmergencyResponseGame from './EmergencyResponseGame';
 import TrafficSafetyGame from './TrafficSafetyGame';
+import RoadSafetyQuest from './RoadSafetyQuest';
 import { Play, HelpCircle, AlertTriangle, Gamepad, Keyboard, Smartphone, Info, Settings } from 'lucide-react';
 
 interface GameSelectorProps {
@@ -33,7 +34,7 @@ const GameSelector: React.FC<GameSelectorProps> = ({
   const [showHelp, setShowHelp] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [gameMode, setGameMode] = useState<'classic' | 'modern'>('modern');
+  const [gameMode, setGameMode] = useState<'classic' | 'modern' | 'quest'>('quest');
 
   // Check if user is on mobile device
   useEffect(() => {
@@ -53,6 +54,10 @@ const GameSelector: React.FC<GameSelectorProps> = ({
   const getGameType = () => {
     const title = lessonTitle.toLowerCase();
     const id = lessonId.toLowerCase();
+    
+    if (title.includes('introduction') || title.includes('intro') || id.includes('intro')) {
+      return 'road-safety-quest';
+    }
     
     if (title.includes('traffic light') || title.includes('signal') || id.includes('signal') || title.includes('intersection')) {
       return 'traffic-light';
@@ -87,6 +92,22 @@ const GameSelector: React.FC<GameSelectorProps> = ({
   const gameType = getGameType();
 
   const gameOptions = [
+    {
+      id: 'road-safety-quest',
+      name: 'Road Safety Quest',
+      description: 'Navigate through the city following road safety principles',
+      icon: '🏙️',
+      controls: [
+        'Navigate from home to destination safely',
+        'Complete checkpoints along the way',
+        'Answer safety challenges correctly',
+        'Avoid collisions and traffic violations'
+      ],
+      mobileControls: [
+        'Tap directional buttons to move',
+        'Follow on-screen instructions'
+      ]
+    },
     {
       id: 'traffic-light',
       name: 'Traffic Light Control',
@@ -186,6 +207,14 @@ const GameSelector: React.FC<GameSelectorProps> = ({
   };
 
   const renderGame = () => {
+    if (gameMode === 'quest') {
+      return <RoadSafetyQuest 
+        onComplete={handleGameComplete} 
+        theme={theme} 
+        language={language}
+      />;
+    }
+    
     if (gameMode === 'modern') {
       return <TrafficSafetyGame 
         topic={lessonTitle} 
@@ -206,12 +235,14 @@ const GameSelector: React.FC<GameSelectorProps> = ({
         return <SpeedLimitGame onComplete={handleGameComplete} theme={theme} />;
       case 'emergency':
         return <EmergencyResponseGame onComplete={handleGameComplete} theme={theme} />;
+      case 'road-safety-quest':
+        return <RoadSafetyQuest onComplete={handleGameComplete} theme={theme} language={language} />;
       default:
         return null;
     }
   };
 
-  if (!showInstructions && (selectedGame || gameMode === 'modern')) {
+  if (!showInstructions && (selectedGame || gameMode === 'modern' || gameMode === 'quest')) {
     return renderGame();
   }
 
@@ -263,6 +294,16 @@ const GameSelector: React.FC<GameSelectorProps> = ({
               <span className="text-sm text-blue-700">Game Mode:</span>
               <div className="flex space-x-2">
                 <button
+                  onClick={() => setGameMode('quest')}
+                  className={`px-3 py-1 text-xs rounded-lg ${
+                    gameMode === 'quest' 
+                      ? 'bg-blue-600 text-white' 
+                      : 'bg-gray-100 text-gray-700'
+                  }`}
+                >
+                  Quest
+                </button>
+                <button
                   onClick={() => setGameMode('modern')}
                   className={`px-3 py-1 text-xs rounded-lg ${
                     gameMode === 'modern' 
@@ -285,7 +326,8 @@ const GameSelector: React.FC<GameSelectorProps> = ({
               </div>
             </div>
             <div className="mt-2 text-xs text-blue-600">
-              Modern: Enhanced 2D game with improved graphics and controls<br/>
+              Quest: New immersive road safety journey game<br/>
+              Modern: Enhanced 2D game with improved graphics<br/>
               Classic: Original game style with simpler mechanics
             </div>
           </motion.div>
