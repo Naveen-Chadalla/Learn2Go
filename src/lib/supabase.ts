@@ -3,23 +3,61 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-// Validate environment variables
-if (!supabaseUrl || supabaseUrl === 'your_supabase_url_here' || !supabaseUrl.startsWith('http')) {
-  throw new Error(
-    'Missing or invalid VITE_SUPABASE_URL environment variable. ' +
-    'Please set it to your actual Supabase project URL in the .env file. ' +
-    'Example: https://your-project.supabase.co'
-  )
+// Enhanced validation for environment variables
+const validateSupabaseConfig = () => {
+  if (!supabaseUrl || supabaseUrl === 'your_supabase_url_here') {
+    throw new Error(
+      '❌ VITE_SUPABASE_URL is not configured.\n\n' +
+      'Please follow these steps:\n' +
+      '1. Go to your Supabase project dashboard\n' +
+      '2. Navigate to Settings > API\n' +
+      '3. Copy your Project URL\n' +
+      '4. Update the VITE_SUPABASE_URL in your .env file\n' +
+      '5. Restart your development server\n\n' +
+      'Example: VITE_SUPABASE_URL=https://your-project-id.supabase.co'
+    )
+  }
+
+  if (!supabaseAnonKey || supabaseAnonKey === 'your_supabase_anon_key_here') {
+    throw new Error(
+      '❌ VITE_SUPABASE_ANON_KEY is not configured.\n\n' +
+      'Please follow these steps:\n' +
+      '1. Go to your Supabase project dashboard\n' +
+      '2. Navigate to Settings > API\n' +
+      '3. Copy your anon/public key\n' +
+      '4. Update the VITE_SUPABASE_ANON_KEY in your .env file\n' +
+      '5. Restart your development server'
+    )
+  }
+
+  // Validate URL format
+  try {
+    const url = new URL(supabaseUrl)
+    if (!url.hostname.includes('supabase.co') && !url.hostname.includes('localhost')) {
+      throw new Error('Invalid Supabase URL format')
+    }
+  } catch (error) {
+    throw new Error(
+      `❌ Invalid VITE_SUPABASE_URL format: ${supabaseUrl}\n\n` +
+      'The URL should look like: https://your-project-id.supabase.co\n' +
+      'Please check your .env file and ensure the URL is complete and correct.'
+    )
+  }
+
+  // Validate key format (basic check)
+  if (supabaseAnonKey.length < 100) {
+    throw new Error(
+      '❌ VITE_SUPABASE_ANON_KEY appears to be invalid.\n\n' +
+      'The anonymous key should be a long JWT token.\n' +
+      'Please verify you copied the complete key from your Supabase dashboard.'
+    )
+  }
 }
 
-if (!supabaseAnonKey || supabaseAnonKey === 'your_supabase_anon_key_here') {
-  throw new Error(
-    'Missing or invalid VITE_SUPABASE_ANON_KEY environment variable. ' +
-    'Please set it to your actual Supabase anonymous key in the .env file.'
-  )
-}
+// Validate configuration before creating client
+validateSupabaseConfig()
 
-// Create Supabase client with better error handling
+// Create Supabase client with enhanced configuration
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
@@ -38,9 +76,11 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   }
 })
 
-// Add connection test function
+// Enhanced connection test function with better error handling
 export const testSupabaseConnection = async () => {
   try {
+    console.log('🔄 Testing Supabase connection...')
+    
     const { data, error } = await supabase
       .from('lessons')
       .select('count')
@@ -48,14 +88,43 @@ export const testSupabaseConnection = async () => {
       .single()
     
     if (error) {
-      console.error('Supabase connection test failed:', error)
+      console.error('❌ Supabase connection test failed:', error)
+      
+      // Provide specific error guidance
+      if (error.message.includes('Failed to fetch')) {
+        console.error(
+          '🔧 Connection Error: Unable to reach Supabase.\n' +
+          'Please check:\n' +
+          '1. Your internet connection\n' +
+          '2. VITE_SUPABASE_URL is correct\n' +
+          '3. Your Supabase project is active'
+        )
+      } else if (error.message.includes('JWT')) {
+        console.error(
+          '🔧 Authentication Error: Invalid API key.\n' +
+          'Please verify VITE_SUPABASE_ANON_KEY is correct.'
+        )
+      }
+      
       return false
     }
     
-    console.log('Supabase connection test successful')
+    console.log('✅ Supabase connection test successful')
     return true
   } catch (err) {
-    console.error('Supabase connection test error:', err)
+    console.error('❌ Supabase connection test error:', err)
+    
+    if (err instanceof TypeError && err.message.includes('Failed to fetch')) {
+      console.error(
+        '🔧 Network Error: Cannot connect to Supabase.\n' +
+        'This usually means:\n' +
+        '1. Invalid or incomplete VITE_SUPABASE_URL\n' +
+        '2. Network connectivity issues\n' +
+        '3. Supabase service is down\n\n' +
+        'Current URL:', supabaseUrl
+      )
+    }
+    
     return false
   }
 }
