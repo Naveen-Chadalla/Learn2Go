@@ -46,15 +46,11 @@ export class ActivityTracker {
     if (navigator.onLine && !this.isPausedByNetwork) {
       this.startHeartbeat()
       
-      try {
-        // Log session start
-        await this.logActivity('session_start', {
-          session_id: this.sessionId,
-          timestamp: new Date().toISOString()
-        }).catch(err => console.warn('Failed to log session start:', err))
-      } catch (error) {
-        console.warn('Error logging session start (non-critical):', error)
-      }
+      // Log session start
+      await this.logActivity('session_start', {
+        session_id: this.sessionId,
+        timestamp: new Date().toISOString()
+      }).catch(err => console.warn('Failed to log session start:', err))
     } else {
       console.log('Starting tracking in offline mode - will resume when online')
     }
@@ -69,14 +65,10 @@ export class ActivityTracker {
     }
 
     if (this.username && this.sessionId && navigator.onLine && !this.isPausedByNetwork) {
-      try {
-        await this.logActivity('session_end', {
-          session_id: this.sessionId,
-          timestamp: new Date().toISOString()
-        }).catch(err => console.warn('Failed to log session end:', err))
-      } catch (error) {
-        console.warn('Error logging session end (non-critical):', error)
-      }
+      await this.logActivity('session_end', {
+        session_id: this.sessionId,
+        timestamp: new Date().toISOString()
+      }).catch(err => console.warn('Failed to log session end:', err))
     }
   }
 
@@ -87,11 +79,7 @@ export class ActivityTracker {
 
     this.heartbeatInterval = setInterval(async () => {
       if (this.isActive && this.username && navigator.onLine && !this.isPausedByNetwork) {
-        try {
-          await this.updateActivityHeartbeat()
-        } catch (err) {
-          console.warn('Heartbeat error (non-critical):', err)
-        }
+        await this.updateActivityHeartbeat().catch(err => console.warn('Heartbeat error (non-critical):', err))
       }
     }, 30000) // 30 seconds
   }
@@ -114,38 +102,40 @@ export class ActivityTracker {
     this.lastHeartbeatAttempt = now
 
     try {
-      // Use a timeout to prevent hanging requests
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 second timeout
-      
-      const { error } = await supabase
-        .from('user_activity_logs')
-        .insert({
-          username: this.username,
-          activity_type: 'heartbeat',
-          session_id: this.sessionId,
-          activity_details: {
-            timestamp: new Date().toISOString(),
+      // Wrap in try/catch to prevent errors from bubbling up
+      try {
+        // Use a timeout to prevent hanging requests
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 second timeout
+        
+        const { error } = await supabase
+          .from('user_activity_logs')
+          .insert({
+            username: this.username,
+            activity_type: 'heartbeat',
+            session_id: this.sessionId,
+            activity_details: {
+              timestamp: new Date().toISOString(),
+              page_url: window.location.href,
+              user_agent: navigator.userAgent
+            },
             page_url: window.location.href,
             user_agent: navigator.userAgent
-          },
-          page_url: window.location.href,
-          user_agent: navigator.userAgent
-        }, { signal: controller.signal })
+          }, { signal: controller.signal })
 
-      clearTimeout(timeoutId)
+        clearTimeout(timeoutId)
 
-      if (error) {
-        console.warn('Activity heartbeat warning:', error)
-        this.heartbeatRetryCount++
-        return
-      }
+        if (error) {
+          console.warn('Activity heartbeat warning:', error)
+          // Don't throw error to prevent disrupting user experience
+          this.heartbeatRetryCount++
+          return
+        }
 
-      // Reset retry count on success
-      this.heartbeatRetryCount = 0
+        // Reset retry count on success
+        this.heartbeatRetryCount = 0
 
-      // Update user's last activity
-      try {
+        // Update user's last activity
         await supabase
           .from('users')
           .update({ 
@@ -153,15 +143,17 @@ export class ActivityTracker {
             current_page: window.location.pathname
           })
           .eq('username', this.username)
-      } catch (updateError) {
-        console.warn('User activity update warning (non-critical):', updateError)
+          .catch(err => console.warn('User activity update warning:', err))
+      } catch (innerErr) {
+        console.warn('Activity heartbeat inner error (non-critical):', innerErr)
+        this.heartbeatRetryCount++
       }
-    } catch (error) {
-      console.warn('Activity heartbeat failed (non-critical):', error)
+    } catch (err) {
+      console.warn('Activity heartbeat failed (non-critical):', err)
       this.heartbeatRetryCount++
       
       // If it's a network error, pause tracking and let network events handle resumption
-      if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+      if (err instanceof TypeError && err.message.includes('Failed to fetch')) {
         console.warn('Network connectivity issue detected, pausing activity tracking')
         this.isPausedByNetwork = true
         this.pauseTracking()
@@ -190,6 +182,7 @@ export class ActivityTracker {
       clearInterval(this.heartbeatInterval)
       this.heartbeatInterval = null
     }
+    // Note: Resumption is now handled by network event listeners, not timeouts
   }
 
   async logActivity(activityType: string, details: any = {}) {
@@ -202,91 +195,77 @@ export class ActivityTracker {
     }
 
     try {
-      // Use a timeout to prevent hanging requests
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 second timeout
-      
-      const { error } = await supabase
-        .from('user_activity_logs')
-        .insert({
-          username: this.username,
-          activity_type: activityType,
-          session_id: this.sessionId,
-          activity_details: details,
-          page_url: window.location.href,
-          user_agent: navigator.userAgent,
-          timestamp: new Date().toISOString()
-        }, { signal: controller.signal })
+      // Wrap in try/catch to prevent errors from bubbling up
+      try {
+        // Use a timeout to prevent hanging requests
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 second timeout
+        
+        const { error } = await supabase
+          .from('user_activity_logs')
+          .insert({
+            username: this.username,
+            activity_type: activityType,
+            session_id: this.sessionId,
+            activity_details: details,
+            page_url: window.location.href,
+            user_agent: navigator.userAgent,
+            timestamp: new Date().toISOString()
+          }, { signal: controller.signal })
 
-      clearTimeout(timeoutId)
+        clearTimeout(timeoutId)
 
-      if (error) {
-        console.warn('Activity logging warning (non-critical):', error)
+        if (error) {
+          console.warn('Activity logging warning:', error)
+        }
+      } catch (innerErr) {
+        console.warn('Activity logging inner error (non-critical):', innerErr)
       }
-    } catch (error) {
-      console.warn('Activity logging failed (non-critical):', error)
+    } catch (err) {
+      console.warn('Activity logging failed (non-critical):', err)
       
       // If it's a network error, mark as paused
-      if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+      if (err instanceof TypeError && err.message.includes('Failed to fetch')) {
         this.isPausedByNetwork = true
       }
     }
   }
 
   async logLessonStart(lessonId: string) {
-    try {
-      await this.logActivity('lesson_start', { lesson_id: lessonId })
-    } catch (error) {
-      console.warn('Lesson start logging error (non-critical):', error)
-    }
+    await this.logActivity('lesson_start', { lesson_id: lessonId })
+      .catch(err => console.warn('Lesson start logging error (non-critical):', err))
   }
 
   async logLessonComplete(lessonId: string, score: number, timeSpent: number) {
-    try {
-      await this.logActivity('lesson_complete', {
-        lesson_id: lessonId,
-        score,
-        time_spent_seconds: timeSpent
-      })
-    } catch (error) {
-      console.warn('Lesson complete logging error (non-critical):', error)
-    }
+    await this.logActivity('lesson_complete', {
+      lesson_id: lessonId,
+      score,
+      time_spent_seconds: timeSpent
+    }).catch(err => console.warn('Lesson complete logging error (non-critical):', err))
   }
 
   async logQuizAttempt(lessonId: string, score: number, totalQuestions: number) {
-    try {
-      await this.logActivity('quiz_attempt', {
-        lesson_id: lessonId,
-        score,
-        total_questions: totalQuestions,
-        percentage: totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0
-      })
-    } catch (error) {
-      console.warn('Quiz attempt logging error (non-critical):', error)
-    }
+    await this.logActivity('quiz_attempt', {
+      lesson_id: lessonId,
+      score,
+      total_questions: totalQuestions,
+      percentage: totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0
+    }).catch(err => console.warn('Quiz attempt logging error (non-critical):', err))
   }
 
   async logGamePlay(gameType: string, score: number, duration: number) {
-    try {
-      await this.logActivity('game_play', {
-        game_type: gameType,
-        score,
-        duration_seconds: duration
-      })
-    } catch (error) {
-      console.warn('Game play logging error (non-critical):', error)
-    }
+    await this.logActivity('game_play', {
+      game_type: gameType,
+      score,
+      duration_seconds: duration
+    }).catch(err => console.warn('Game play logging error (non-critical):', err))
   }
 
   async logPageView(pagePath: string) {
-    try {
-      await this.logActivity('page_view', {
-        page_path: pagePath,
-        referrer: document.referrer
-      })
-    } catch (error) {
-      console.warn('Page view logging error (non-critical):', error)
-    }
+    await this.logActivity('page_view', {
+      page_path: pagePath,
+      referrer: document.referrer
+    }).catch(err => console.warn('Page view logging error (non-critical):', err))
   }
 }
 
