@@ -284,7 +284,7 @@ const RoadSafetyQuest: React.FC<RoadSafetyQuestProps> = ({
         height: 60,
         type: 'finish',
         completed: false,
-        message: 'Congratulations! You've reached your destination safely!'
+        message: 'Congratulations! You\'ve reached your destination safely!'
       }
     ];
     
