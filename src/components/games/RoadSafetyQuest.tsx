@@ -16,8 +16,16 @@ import {
   AlertTriangle,
   Info,
   Settings,
+  User,
+  Bike,
+  Car,
   CheckCircle,
   XCircle,
+  MapPin,
+  Flag,
+  Award,
+  Zap,
+  Shield,
   Heart
 } from 'lucide-react';
 
@@ -38,22 +46,11 @@ interface Player {
   height: number;
   speed: number;
   direction: 'up' | 'down' | 'left' | 'right';
-  isMoving: boolean;
   type: 'pedestrian' | 'cyclist' | 'driver';
+  isMoving: boolean;
   lives: number;
-}
-
-interface Obstacle {
-  id: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  type: 'car' | 'pedestrian' | 'trafficLight' | 'sign' | 'crosswalk' | 'intersection';
-  state?: 'red' | 'yellow' | 'green' | 'walk' | 'stop';
-  direction?: 'up' | 'down' | 'left' | 'right';
-  speed?: number;
-  behavior?: 'distracted' | 'normal' | 'reckless';
+  score: number;
+  safetyGear: boolean;
 }
 
 interface Checkpoint {
@@ -62,32 +59,47 @@ interface Checkpoint {
   y: number;
   width: number;
   height: number;
-  type: 'crosswalk' | 'trafficSignal' | 'blindTurn' | 'zebraCrossing' | 'parkingZone' | 'destination';
+  type: 'crosswalk' | 'traffic_light' | 'blind_turn' | 'parking' | 'intersection';
   completed: boolean;
-  task?: {
-    question: string;
-    options: string[];
-    correctIndex: number;
-    explanation: string;
-  };
+  question?: SafetyQuestion;
 }
 
-interface GameState {
-  score: number;
-  level: number;
-  timeLeft: number;
-  isPaused: boolean;
-  isGameOver: boolean;
-  isLevelComplete: boolean;
-  safetyViolations: number;
-  currentCheckpoint: number;
+interface Obstacle {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  type: 'car' | 'pedestrian' | 'cyclist' | 'pothole' | 'construction';
+  direction?: 'up' | 'down' | 'left' | 'right';
+  speed?: number;
+  active: boolean;
+}
+
+interface SafetyQuestion {
+  text: string;
+  options: string[];
+  correctIndex: number;
+  explanation: string;
+  principle: 'awareness' | 'responsibility' | 'respect' | 'preparation';
 }
 
 interface SafetyTip {
-  id: string;
   text: string;
-  category: 'awareness' | 'responsibility' | 'respect' | 'preparation';
+  principle: 'awareness' | 'responsibility' | 'respect' | 'preparation';
   icon: React.ReactNode;
+}
+
+interface GameState {
+  phase: 'character_select' | 'instructions' | 'playing' | 'checkpoint' | 'game_over' | 'victory';
+  level: number;
+  timeLeft: number;
+  isPaused: boolean;
+  currentCheckpoint: number;
+  showTip: boolean;
+  currentTip: SafetyTip | null;
+  violations: number;
+  safeActions: number;
 }
 
 const RoadSafetyQuest: React.FC<RoadSafetyQuestProps> = ({ 
@@ -101,85 +113,45 @@ const RoadSafetyQuest: React.FC<RoadSafetyQuestProps> = ({
   
   // Game state
   const [gameState, setGameState] = useState<GameState>({
-    score: 0,
+    phase: 'character_select',
     level: 1,
-    timeLeft: 120,
+    timeLeft: 300,
     isPaused: false,
-    isGameOver: false,
-    isLevelComplete: false,
-    safetyViolations: 0,
-    currentCheckpoint: 0
+    currentCheckpoint: 0,
+    showTip: false,
+    currentTip: null,
+    violations: 0,
+    safeActions: 0
   });
   
   // Player state
   const [player, setPlayer] = useState<Player>({
-    x: 50,
+    x: 100,
     y: 300,
     width: 40,
     height: 40,
     speed: 5,
     direction: 'right',
-    isMoving: false,
     type: 'pedestrian',
-    lives: 3
+    isMoving: false,
+    lives: 3,
+    score: 0,
+    safetyGear: false
   });
   
   // Game entities
-  const [obstacles, setObstacles] = useState<Obstacle[]>([]);
   const [checkpoints, setCheckpoints] = useState<Checkpoint[]>([]);
+  const [obstacles, setObstacles] = useState<Obstacle[]>([]);
+  const [safetyTips, setSafetyTips] = useState<SafetyTip[]>([]);
   
   // UI state
-  const [showTutorial, setShowTutorial] = useState(true);
-  const [showSettings, setShowSettings] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [keyStates, setKeyStates] = useState<{[key: string]: boolean}>({});
-  const [tutorialStep, setTutorialStep] = useState(0);
-  const [gameStarted, setGameStarted] = useState(false);
-  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
-  const [showFailMessage, setShowFailMessage] = useState(false);
-  const [failMessage, setFailMessage] = useState('');
-  const [showCheckpointTask, setShowCheckpointTask] = useState(false);
-  const [currentTask, setCurrentTask] = useState<Checkpoint['task'] | null>(null);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
-  const [showTaskResult, setShowTaskResult] = useState(false);
-  const [isTaskCorrect, setIsTaskCorrect] = useState(false);
-  const [playerType, setPlayerType] = useState<'pedestrian' | 'cyclist' | 'driver'>('pedestrian');
-  
-  // Safety tips
-  const safetyTips: SafetyTip[] = [
-    {
-      id: 'awareness1',
-      text: 'Always be alert at intersections - they are high-risk areas for accidents.',
-      category: 'awareness',
-      icon: <AlertTriangle className="h-5 w-5 text-yellow-500" />
-    },
-    {
-      id: 'responsibility1',
-      text: 'You are responsible for your safety and the safety of others on the road.',
-      category: 'responsibility',
-      icon: <CheckCircle className="h-5 w-5 text-green-500" />
-    },
-    {
-      id: 'respect1',
-      text: 'Respect all road users - pedestrians, cyclists, and drivers all have rights.',
-      category: 'respect',
-      icon: <Heart className="h-5 w-5 text-red-500" />
-    },
-    {
-      id: 'preparation1',
-      text: 'Always check your vehicle before driving - brakes, lights, and tires.',
-      category: 'preparation',
-      icon: <Settings className="h-5 w-5 text-blue-500" />
-    },
-    {
-      id: 'awareness2',
-      text: 'Avoid distractions like phones while walking, cycling, or driving.',
-      category: 'awareness',
-      icon: <AlertTriangle className="h-5 w-5 text-yellow-500" />
-    }
-  ];
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [feedbackCorrect, setFeedbackCorrect] = useState(false);
   
   // Detect mobile devices
   useEffect(() => {
@@ -195,287 +167,253 @@ const RoadSafetyQuest: React.FC<RoadSafetyQuestProps> = ({
     };
   }, []);
   
-  // Initialize game based on player type
+  // Initialize game data
   useEffect(() => {
-    if (!gameStarted) return;
-    
-    // Clear any existing game loop
-    if (gameLoopRef.current) {
-      cancelAnimationFrame(gameLoopRef.current);
-    }
-    
-    // Reset game state
-    setGameState({
-      score: 0,
-      level: 1,
-      timeLeft: 120,
-      isPaused: false,
-      isGameOver: false,
-      isLevelComplete: false,
-      safetyViolations: 0,
-      currentCheckpoint: 0
-    });
-    
-    // Initialize player position based on type
-    setPlayer({
-      x: 50,
-      y: 300,
-      width: playerType === 'driver' ? 60 : playerType === 'cyclist' ? 50 : 40,
-      height: playerType === 'driver' ? 30 : playerType === 'cyclist' ? 40 : 40,
-      speed: playerType === 'driver' ? 7 : playerType === 'cyclist' ? 6 : 5,
-      direction: 'right',
-      isMoving: false,
-      type: playerType,
-      lives: 3
-    });
-    
-    // Initialize obstacles and checkpoints
-    initializeGameEntities();
-    
-    // Start game loop
-    startGameLoop();
-    
-    return () => {
-      if (gameLoopRef.current) {
-        cancelAnimationFrame(gameLoopRef.current);
-      }
-    };
-  }, [gameStarted, playerType]);
+    initializeSafetyTips();
+    initializeCheckpoints();
+  }, []);
   
-  // Handle keyboard input
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (gameState.isPaused || gameState.isGameOver || showTutorial || showCheckpointTask) return;
-      
-      setKeyStates(prev => ({ ...prev, [e.key]: true }));
-    };
-    
-    const handleKeyUp = (e: KeyboardEvent) => {
-      setKeyStates(prev => ({ ...prev, [e.key]: false }));
-    };
-    
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-    
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-    };
-  }, [gameState.isPaused, gameState.isGameOver, showTutorial, showCheckpointTask]);
-  
-  // Game timer
-  useEffect(() => {
-    if (!gameStarted || gameState.isPaused || gameState.isGameOver || showTutorial || showCheckpointTask) return;
-    
-    const timer = setInterval(() => {
-      setGameState(prev => {
-        if (prev.timeLeft <= 0) {
-          clearInterval(timer);
-          return { ...prev, isGameOver: true };
-        }
-        return { ...prev, timeLeft: prev.timeLeft - 1 };
-      });
-    }, 1000);
-    
-    return () => clearInterval(timer);
-  }, [gameStarted, gameState.isPaused, gameState.isGameOver, showTutorial, showCheckpointTask]);
-  
-  // Initialize game entities
-  const initializeGameEntities = () => {
-    // Create checkpoints based on level
-    const levelCheckpoints: Checkpoint[] = [
+  // Initialize safety tips
+  const initializeSafetyTips = () => {
+    const tips: SafetyTip[] = [
       {
-        id: 'crosswalk1',
+        text: "Always look both ways before crossing the street, even at crosswalks with signals.",
+        principle: "awareness",
+        icon: <Eye className="h-6 w-6 text-blue-500" />
+      },
+      {
+        text: "Wear appropriate safety gear - helmets for cyclists, seatbelts for drivers.",
+        principle: "preparation",
+        icon: <Shield className="h-6 w-6 text-green-500" />
+      },
+      {
+        text: "Yield to pedestrians at crosswalks - it's not just polite, it's the law.",
+        principle: "respect",
+        icon: <Heart className="h-6 w-6 text-red-500" />
+      },
+      {
+        text: "Never use your phone while driving, cycling, or crossing the street.",
+        principle: "responsibility",
+        icon: <AlertTriangle className="h-6 w-6 text-yellow-500" />
+      },
+      {
+        text: "Maintain your vehicle regularly to prevent breakdowns and accidents.",
+        principle: "preparation",
+        icon: <Settings className="h-6 w-6 text-green-500" />
+      },
+      {
+        text: "Signal your intentions when driving or cycling to help others anticipate your moves.",
+        principle: "respect",
+        icon: <Heart className="h-6 w-6 text-red-500" />
+      },
+      {
+        text: "Stay visible - wear bright colors when walking or cycling, especially at night.",
+        principle: "awareness",
+        icon: <Eye className="h-6 w-6 text-blue-500" />
+      },
+      {
+        text: "Follow traffic signals and signs - they're designed to keep everyone safe.",
+        principle: "responsibility",
+        icon: <AlertTriangle className="h-6 w-6 text-yellow-500" />
+      }
+    ];
+    
+    setSafetyTips(tips);
+  };
+  
+  // Initialize checkpoints with safety questions
+  const initializeCheckpoints = () => {
+    const checkpointData: Checkpoint[] = [
+      {
+        id: 'crosswalk',
         x: 200,
-        y: 300,
+        y: 150,
         width: 100,
         height: 60,
         type: 'crosswalk',
         completed: false,
-        task: {
-          question: "What should you do before crossing a road?",
+        question: {
+          text: "You're approaching a crosswalk and the pedestrian signal is flashing. What should you do?",
           options: [
-            "Run across quickly",
-            "Look at your phone while crossing",
-            "Look both ways, then cross",
-            "Cross without checking for traffic"
+            "Run across quickly before the light changes",
+            "Wait for the next full walk signal",
+            "Cross if there are no cars coming",
+            "Follow the crowd regardless of the signal"
           ],
-          correctIndex: 2,
-          explanation: "Always look both ways before crossing to ensure no vehicles are approaching."
+          correctIndex: 1,
+          explanation: "When a pedestrian signal is flashing, it means 'don't start crossing'. Wait for the next full walk signal to ensure you have enough time to cross safely.",
+          principle: "responsibility"
         }
       },
       {
-        id: 'trafficSignal1',
+        id: 'traffic_light',
         x: 400,
-        y: 200,
-        width: 80,
-        height: 80,
-        type: 'trafficSignal',
-        completed: false,
-        task: {
-          question: "What does a red traffic light mean?",
-          options: [
-            "Slow down",
-            "Stop completely",
-            "Speed up to get through",
-            "Look around and proceed if clear"
-          ],
-          correctIndex: 1,
-          explanation: "A red traffic light means you must stop completely and wait until it turns green."
-        }
-      },
-      {
-        id: 'blindTurn1',
-        x: 600,
-        y: 300,
-        width: 80,
-        height: 80,
-        type: 'blindTurn',
-        completed: false,
-        task: {
-          question: "When approaching a blind turn, you should:",
-          options: [
-            "Maintain your speed",
-            "Slow down and be prepared to stop",
-            "Honk continuously",
-            "Change lanes quickly"
-          ],
-          correctIndex: 1,
-          explanation: "Always slow down at blind turns as you cannot see oncoming traffic or obstacles."
-        }
-      },
-      {
-        id: 'zebraCrossing1',
-        x: 800,
-        y: 200,
-        width: 100,
-        height: 60,
-        type: 'zebraCrossing',
-        completed: false,
-        task: {
-          question: "At a zebra crossing with pedestrians waiting, you should:",
-          options: [
-            "Drive through quickly",
-            "Stop and let pedestrians cross",
-            "Honk to make them wait",
-            "Slow down but continue if you're in a hurry"
-          ],
-          correctIndex: 1,
-          explanation: "Always stop at zebra crossings when pedestrians are waiting to cross."
-        }
-      },
-      {
-        id: 'parkingZone1',
-        x: 1000,
-        y: 300,
-        width: 80,
-        height: 100,
-        type: 'parkingZone',
-        completed: false,
-        task: {
-          question: "When parking your vehicle, you should:",
-          options: [
-            "Park anywhere convenient",
-            "Park in designated areas only",
-            "Double park if no spaces are available",
-            "Park blocking a driveway if it's just for a minute"
-          ],
-          correctIndex: 1,
-          explanation: "Always park in designated areas to ensure safety and avoid obstructing traffic."
-        }
-      },
-      {
-        id: 'destination',
-        x: 1200,
         y: 250,
         width: 80,
         height: 80,
-        type: 'destination',
-        completed: false
+        type: 'traffic_light',
+        completed: false,
+        question: {
+          text: "You're cycling and approaching a yellow traffic light. What's the safest action?",
+          options: [
+            "Speed up to get through before it turns red",
+            "Stop if it's safe to do so",
+            "Ignore it since you're on a bike",
+            "Swerve around any cars that are stopping"
+          ],
+          correctIndex: 1,
+          explanation: "Yellow means prepare to stop. Cyclists must follow the same traffic signals as vehicles. Stop if it's safe to do so, otherwise complete your crossing.",
+          principle: "responsibility"
+        }
+      },
+      {
+        id: 'blind_turn',
+        x: 600,
+        y: 150,
+        width: 80,
+        height: 80,
+        type: 'blind_turn',
+        completed: false,
+        question: {
+          text: "You're driving and approaching a blind curve. What should you do?",
+          options: [
+            "Maintain your current speed",
+            "Move to the center of the road for a better view",
+            "Slow down and stay in your lane",
+            "Honk your horn continuously while turning"
+          ],
+          correctIndex: 2,
+          explanation: "When approaching a blind curve, slow down and stay in your lane. This gives you more time to react to unexpected hazards and reduces the risk of a collision.",
+          principle: "awareness"
+        }
+      },
+      {
+        id: 'intersection',
+        x: 300,
+        y: 400,
+        width: 100,
+        height: 100,
+        type: 'intersection',
+        completed: false,
+        question: {
+          text: "You arrive at a four-way stop at the same time as another vehicle to your right. Who goes first?",
+          options: [
+            "You go first because you're ready",
+            "The vehicle on the right goes first",
+            "Whoever is driving faster",
+            "The larger vehicle has right of way"
+          ],
+          correctIndex: 1,
+          explanation: "At a four-way stop, when two vehicles arrive at the same time, the vehicle on the right has the right of way. This is a standard rule that helps prevent confusion and accidents.",
+          principle: "respect"
+        }
+      },
+      {
+        id: 'parking',
+        x: 500,
+        y: 350,
+        width: 120,
+        height: 60,
+        type: 'parking',
+        completed: false,
+        question: {
+          text: "Before starting your car after it's been parked, what should you check?",
+          options: [
+            "Just your mirrors",
+            "Your social media notifications",
+            "All mirrors, blind spots, and that your path is clear",
+            "That your radio is set to your favorite station"
+          ],
+          correctIndex: 2,
+          explanation: "Before moving your vehicle, check all mirrors, blind spots, and ensure your path is clear. This preparation helps prevent accidents with pedestrians, cyclists, or other vehicles that might be passing by.",
+          principle: "preparation"
+        }
       }
     ];
     
-    // Create obstacles based on player type and level
-    const levelObstacles: Obstacle[] = [
+    setCheckpoints(checkpointData);
+  };
+  
+  // Initialize obstacles
+  const initializeObstacles = () => {
+    const obstacleData: Obstacle[] = [
       {
         id: 'car1',
         x: 300,
-        y: 150,
-        width: 60,
-        height: 30,
-        type: 'car',
-        direction: 'left',
-        speed: 3,
-        behavior: 'normal'
-      },
-      {
-        id: 'car2',
-        x: 500,
-        y: 350,
+        y: 200,
         width: 60,
         height: 30,
         type: 'car',
         direction: 'right',
         speed: 2,
-        behavior: 'distracted'
+        active: true
       },
       {
         id: 'pedestrian1',
         x: 250,
-        y: 250,
+        y: 150,
         width: 20,
-        height: 40,
+        height: 30,
         type: 'pedestrian',
         direction: 'down',
         speed: 1,
-        behavior: 'normal'
+        active: true
       },
       {
-        id: 'trafficLight1',
+        id: 'cyclist1',
         x: 400,
-        y: 150,
-        width: 20,
-        height: 40,
-        type: 'trafficLight',
-        state: 'red'
+        y: 300,
+        width: 30,
+        height: 20,
+        type: 'cyclist',
+        direction: 'left',
+        speed: 3,
+        active: true
       },
       {
-        id: 'sign1',
-        x: 600,
-        y: 150,
+        id: 'pothole1',
+        x: 350,
+        y: 250,
         width: 30,
         height: 30,
-        type: 'sign',
-        state: 'stop'
+        type: 'pothole',
+        active: true
       },
       {
-        id: 'crosswalk1',
-        x: 200,
-        y: 280,
-        width: 100,
-        height: 40,
-        type: 'crosswalk'
-      },
-      {
-        id: 'intersection1',
-        x: 400,
+        id: 'construction1',
+        x: 500,
         y: 200,
         width: 80,
-        height: 80,
-        type: 'intersection'
+        height: 40,
+        type: 'construction',
+        active: true
       }
     ];
     
-    setCheckpoints(levelCheckpoints);
-    setObstacles(levelObstacles);
+    setObstacles(obstacleData);
+  };
+  
+  // Start game
+  const startGame = () => {
+    setGameState(prev => ({
+      ...prev,
+      phase: 'playing',
+      timeLeft: 300,
+      isPaused: false
+    }));
+    
+    initializeObstacles();
+    startGameLoop();
   };
   
   // Start game loop
   const startGameLoop = () => {
+    if (gameLoopRef.current) {
+      cancelAnimationFrame(gameLoopRef.current);
+    }
+    
     const gameLoop = () => {
-      if (!gameState.isPaused && !gameState.isGameOver && !showTutorial && !showCheckpointTask) {
-        updateGameState();
-      }
+      updateGameState();
       gameLoopRef.current = requestAnimationFrame(gameLoop);
     };
     
@@ -484,23 +422,25 @@ const RoadSafetyQuest: React.FC<RoadSafetyQuestProps> = ({
   
   // Update game state
   const updateGameState = () => {
-    // Update player position based on keyboard input
+    if (gameState.isPaused || gameState.phase !== 'playing') return;
+    
+    // Update player position
     updatePlayerPosition();
     
     // Update obstacles
     updateObstacles();
     
-    // Check collisions
+    // Check for collisions
     checkCollisions();
     
-    // Check checkpoints
+    // Check for checkpoint interactions
     checkCheckpoints();
     
-    // Check level completion
-    checkLevelCompletion();
+    // Update timer
+    updateTimer();
   };
   
-  // Update player position
+  // Update player position based on keyboard/touch input
   const updatePlayerPosition = () => {
     setPlayer(prev => {
       let newX = prev.x;
@@ -515,7 +455,7 @@ const RoadSafetyQuest: React.FC<RoadSafetyQuestProps> = ({
         isMoving = true;
       }
       if (keyStates['ArrowDown'] || keyStates['s']) {
-        newY = Math.min(canvasRef.current?.clientHeight || 400 - prev.height, prev.y + prev.speed);
+        newY = Math.min(canvasRef.current?.clientHeight || 500 - prev.height, prev.y + prev.speed);
         newDirection = 'down';
         isMoving = true;
       }
@@ -525,7 +465,7 @@ const RoadSafetyQuest: React.FC<RoadSafetyQuestProps> = ({
         isMoving = true;
       }
       if (keyStates['ArrowRight'] || keyStates['d']) {
-        newX = Math.min(canvasRef.current?.clientWidth || 1200 - prev.width, prev.x + prev.speed);
+        newX = Math.min(canvasRef.current?.clientWidth || 800 - prev.width, prev.x + prev.speed);
         newDirection = 'right';
         isMoving = true;
       }
@@ -544,676 +484,627 @@ const RoadSafetyQuest: React.FC<RoadSafetyQuestProps> = ({
   const updateObstacles = () => {
     setObstacles(prev => {
       return prev.map(obstacle => {
-        if (obstacle.type === 'trafficLight') {
-          // Randomly change traffic light state
-          if (Math.random() < 0.005) { // 0.5% chance per frame
-            const states = ['red', 'yellow', 'green'] as const;
-            const currentIndex = states.indexOf(obstacle.state as any);
-            const nextIndex = (currentIndex + 1) % states.length;
-            return { ...obstacle, state: states[nextIndex] };
-          }
+        if (!obstacle.active || !obstacle.direction || !obstacle.speed) {
           return obstacle;
         }
         
-        if (obstacle.direction && obstacle.speed) {
-          // Move obstacle
-          let newX = obstacle.x;
-          let newY = obstacle.y;
-          
-          switch (obstacle.direction) {
-            case 'up':
-              newY -= obstacle.speed;
-              if (newY < -obstacle.height) newY = canvasRef.current?.clientHeight || 400;
-              break;
-            case 'down':
-              newY += obstacle.speed;
-              if (newY > (canvasRef.current?.clientHeight || 400)) newY = -obstacle.height;
-              break;
-            case 'left':
-              newX -= obstacle.speed;
-              if (newX < -obstacle.width) newX = canvasRef.current?.clientWidth || 1200;
-              break;
-            case 'right':
-              newX += obstacle.speed;
-              if (newX > (canvasRef.current?.clientWidth || 1200)) newX = -obstacle.width;
-              break;
-          }
-          
-          return { ...obstacle, x: newX, y: newY };
+        let newX = obstacle.x;
+        let newY = obstacle.y;
+        
+        switch (obstacle.direction) {
+          case 'up':
+            newY -= obstacle.speed;
+            if (newY < -obstacle.height) {
+              newY = canvasRef.current?.clientHeight || 500;
+            }
+            break;
+          case 'down':
+            newY += obstacle.speed;
+            if (newY > (canvasRef.current?.clientHeight || 500)) {
+              newY = -obstacle.height;
+            }
+            break;
+          case 'left':
+            newX -= obstacle.speed;
+            if (newX < -obstacle.width) {
+              newX = canvasRef.current?.clientWidth || 800;
+            }
+            break;
+          case 'right':
+            newX += obstacle.speed;
+            if (newX > (canvasRef.current?.clientWidth || 800)) {
+              newX = -obstacle.width;
+            }
+            break;
         }
         
-        return obstacle;
+        return { ...obstacle, x: newX, y: newY };
       });
     });
   };
   
-  // Check collisions
+  // Check for collisions with obstacles
   const checkCollisions = () => {
-    // Check collisions with obstacles
     obstacles.forEach(obstacle => {
+      if (!obstacle.active) return;
+      
       if (
         player.x < obstacle.x + obstacle.width &&
         player.x + player.width > obstacle.x &&
         player.y < obstacle.y + obstacle.height &&
         player.y + player.height > obstacle.y
       ) {
-        // Handle collision based on obstacle type
-        handleObstacleCollision(obstacle);
+        // Collision detected
+        handleCollision(obstacle);
       }
     });
   };
   
   // Handle collision with obstacle
-  const handleObstacleCollision = (obstacle: Obstacle) => {
-    // Only handle collisions with cars and other moving obstacles
-    if (obstacle.type === 'car' && obstacle.behavior === 'distracted') {
-      // Collision with distracted driver - lose a life
-      setPlayer(prev => {
-        const newLives = prev.lives - 1;
-        
-        // Show fail message
-        setFailMessage('Collision with distracted driver! -1 life');
-        setShowFailMessage(true);
-        setTimeout(() => setShowFailMessage(false), 1500);
-        
-        if (newLives <= 0) {
-          setGameState(prev => ({ ...prev, isGameOver: true }));
-        }
-        
-        return { ...prev, lives: newLives };
-      });
-      
-      // Reset player position to last checkpoint
-      const lastCompletedCheckpoint = checkpoints
-        .filter(c => c.completed)
-        .sort((a, b) => checkpoints.indexOf(b) - checkpoints.indexOf(a))[0];
-      
-      if (lastCompletedCheckpoint) {
-        setPlayer(prev => ({
-          ...prev,
-          x: lastCompletedCheckpoint.x,
-          y: lastCompletedCheckpoint.y
-        }));
-      } else {
-        // Reset to start position
-        setPlayer(prev => ({
-          ...prev,
-          x: 50,
-          y: 300
-        }));
-      }
-      
-      // Add safety violation
+  const handleCollision = (obstacle: Obstacle) => {
+    // Only handle collision if player is moving
+    if (!player.isMoving) return;
+    
+    // Reduce lives
+    setPlayer(prev => ({
+      ...prev,
+      lives: prev.lives - 1,
+      x: 100, // Reset position
+      y: 300
+    }));
+    
+    // Show safety tip
+    showRandomSafetyTip();
+    
+    // Increment violations
+    setGameState(prev => ({
+      ...prev,
+      violations: prev.violations + 1
+    }));
+    
+    // Check if game over
+    if (player.lives <= 1) {
       setGameState(prev => ({
         ...prev,
-        safetyViolations: prev.safetyViolations + 1,
-        score: Math.max(0, prev.score - 20)
+        phase: 'game_over'
       }));
-    } else if (obstacle.type === 'trafficLight') {
-      // Check if player is obeying traffic light
-      if (obstacle.state === 'red' && player.isMoving && player.type === 'driver') {
-        // Running a red light - lose points
-        setGameState(prev => {
-          // Show fail message
-          setFailMessage('Red light violation! -20 points');
-          setShowFailMessage(true);
-          setTimeout(() => setShowFailMessage(false), 1500);
-          
-          return { 
-            ...prev, 
-            score: Math.max(0, prev.score - 20),
-            safetyViolations: prev.safetyViolations + 1
-          };
-        });
-      }
     }
   };
   
-  // Check checkpoints
+  // Check for checkpoint interactions
   const checkCheckpoints = () => {
-    checkpoints.forEach((checkpoint, index) => {
-      if (!checkpoint.completed && 
-          player.x < checkpoint.x + checkpoint.width &&
-          player.x + player.width > checkpoint.x &&
-          player.y < checkpoint.y + checkpoint.height &&
-          player.y + player.height > checkpoint.y) {
-        
-        // Player reached a checkpoint
-        if (checkpoint.task) {
-          // Show task/question
-          setCurrentTask(checkpoint.task);
-          setShowCheckpointTask(true);
-          setSelectedAnswer(null);
-          setShowTaskResult(false);
-          setGameState(prev => ({ ...prev, isPaused: true }));
-          setGameState(prev => ({ ...prev, currentCheckpoint: index }));
-        } else {
-          // Mark checkpoint as completed
-          setCheckpoints(prev => 
-            prev.map((c, i) => 
-              i === index ? { ...c, completed: true } : c
-            )
-          );
-          
-          // Show success message
-          setSuccessMessage('Checkpoint reached! +50 points');
-          setShowSuccessMessage(true);
-          setTimeout(() => setShowSuccessMessage(false), 1500);
-          
-          // Update score
-          setGameState(prev => ({
-            ...prev,
-            score: prev.score + 50,
-            currentCheckpoint: index
-          }));
-        }
+    const currentCheckpoint = checkpoints[gameState.currentCheckpoint];
+    
+    if (
+      currentCheckpoint &&
+      !currentCheckpoint.completed &&
+      player.x < currentCheckpoint.x + currentCheckpoint.width &&
+      player.x + player.width > currentCheckpoint.x &&
+      player.y < currentCheckpoint.y + currentCheckpoint.height &&
+      player.y + player.height > currentCheckpoint.y
+    ) {
+      // Checkpoint reached
+      setGameState(prev => ({
+        ...prev,
+        phase: 'checkpoint',
+        isPaused: true
+      }));
+    }
+  };
+  
+  // Update timer
+  const updateTimer = () => {
+    setGameState(prev => {
+      if (prev.timeLeft <= 0) {
+        return {
+          ...prev,
+          phase: 'game_over'
+        };
       }
+      
+      return {
+        ...prev,
+        timeLeft: prev.timeLeft - 0.016 // Approximately 60fps
+      };
     });
   };
   
-  // Check level completion
-  const checkLevelCompletion = () => {
-    // Check if destination checkpoint is reached
-    const destinationCheckpoint = checkpoints.find(c => c.type === 'destination');
+  // Show random safety tip
+  const showRandomSafetyTip = () => {
+    const randomTip = safetyTips[Math.floor(Math.random() * safetyTips.length)];
     
-    if (destinationCheckpoint && 
-        player.x < destinationCheckpoint.x + destinationCheckpoint.width &&
-        player.x + player.width > destinationCheckpoint.x &&
-        player.y < destinationCheckpoint.y + destinationCheckpoint.height &&
-        player.y + player.height > destinationCheckpoint.y) {
-      
-      // Level complete
+    setGameState(prev => ({
+      ...prev,
+      showTip: true,
+      currentTip: randomTip
+    }));
+    
+    // Hide tip after 3 seconds
+    setTimeout(() => {
       setGameState(prev => ({
         ...prev,
-        isLevelComplete: true,
-        isPaused: true
+        showTip: false,
+        currentTip: null
       }));
-      
-      // Calculate final score
-      const timeBonus = gameState.timeLeft * 2;
-      const safetyBonus = Math.max(0, 100 - (gameState.safetyViolations * 20));
-      const finalScore = gameState.score + timeBonus + safetyBonus;
-      
-      // Update score
-      setGameState(prev => ({
-        ...prev,
-        score: finalScore,
-        isGameOver: true
-      }));
-      
-      // Show success message
-      setSuccessMessage(`Destination reached! Level complete!`);
-      setShowSuccessMessage(true);
-      setTimeout(() => {
-        setShowSuccessMessage(false);
-        // Complete the game
-        const percentage = Math.min(100, Math.round((finalScore / 1000) * 100));
-        onComplete(percentage);
-      }, 2000);
-    }
+    }, 3000);
   };
+  
+  // Handle checkpoint question answer
+  const handleAnswerSelect = (index: number) => {
+    setSelectedAnswer(index);
+  };
+  
+  // Submit answer for checkpoint question
+  const submitAnswer = () => {
+    if (selectedAnswer === null) return;
+    
+    const currentCheckpoint = checkpoints[gameState.currentCheckpoint];
+    const isCorrect = selectedAnswer === currentCheckpoint.question?.correctIndex;
+    
+    setFeedbackCorrect(isCorrect);
+    setShowFeedback(true);
+    
+    if (isCorrect) {
+      // Increment score
+      setPlayer(prev => ({
+        ...prev,
+        score: prev.score + 100
+      }));
+      
+      // Increment safe actions
+      setGameState(prev => ({
+        ...prev,
+        safeActions: prev.safeActions + 1
+      }));
+    } else {
+      // Decrement score
+      setPlayer(prev => ({
+        ...prev,
+        score: Math.max(0, prev.score - 50)
+      }));
+      
+      // Increment violations
+      setGameState(prev => ({
+        ...prev,
+        violations: prev.violations + 1
+      }));
+    }
+    
+    // Show feedback for 3 seconds
+    setTimeout(() => {
+      setShowFeedback(false);
+      
+      // Mark checkpoint as completed
+      setCheckpoints(prev => 
+        prev.map((cp, idx) => 
+          idx === gameState.currentCheckpoint ? { ...cp, completed: true } : cp
+        )
+      );
+      
+      // Move to next checkpoint or victory
+      if (gameState.currentCheckpoint < checkpoints.length - 1) {
+        setGameState(prev => ({
+          ...prev,
+          currentCheckpoint: prev.currentCheckpoint + 1,
+          phase: 'playing',
+          isPaused: false
+        }));
+      } else {
+        setGameState(prev => ({
+          ...prev,
+          phase: 'victory'
+        }));
+      }
+      
+      setSelectedAnswer(null);
+    }, 3000);
+  };
+  
+  // Handle character selection
+  const selectCharacter = (type: 'pedestrian' | 'cyclist' | 'driver') => {
+    setPlayer(prev => ({
+      ...prev,
+      type,
+      safetyGear: false,
+      speed: type === 'pedestrian' ? 4 : type === 'cyclist' ? 6 : 5
+    }));
+    
+    setGameState(prev => ({
+      ...prev,
+      phase: 'instructions'
+    }));
+  };
+  
+  // Toggle safety gear
+  const toggleSafetyGear = () => {
+    setPlayer(prev => ({
+      ...prev,
+      safetyGear: !prev.safetyGear,
+      score: !prev.safetyGear ? prev.score + 50 : prev.score - 50
+    }));
+  };
+  
+  // Handle keyboard input
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (gameState.phase !== 'playing') return;
+      
+      setKeyStates(prev => ({ ...prev, [e.key.toLowerCase()]: true }));
+    };
+    
+    const handleKeyUp = (e: KeyboardEvent) => {
+      setKeyStates(prev => ({ ...prev, [e.key.toLowerCase()]: false }));
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [gameState.phase]);
+  
+  // Game timer
+  useEffect(() => {
+    if (gameState.phase !== 'playing' || gameState.isPaused) return;
+    
+    const timer = setInterval(() => {
+      setGameState(prev => {
+        if (prev.timeLeft <= 0) {
+          clearInterval(timer);
+          return { ...prev, phase: 'game_over' };
+        }
+        return { ...prev, timeLeft: prev.timeLeft - 1 };
+      });
+    }, 1000);
+    
+    return () => clearInterval(timer);
+  }, [gameState.phase, gameState.isPaused]);
+  
+  // Clean up game loop on unmount
+  useEffect(() => {
+    return () => {
+      if (gameLoopRef.current) {
+        cancelAnimationFrame(gameLoopRef.current);
+      }
+    };
+  }, []);
   
   // Handle touch controls for mobile
   const handleTouchStart = (direction: 'up' | 'down' | 'left' | 'right') => {
-    setKeyStates(prev => ({ ...prev, [`Arrow${direction.charAt(0).toUpperCase() + direction.slice(1)}`]: true }));
+    setKeyStates(prev => ({ ...prev, [`arrow${direction}`]: true }));
   };
   
   const handleTouchEnd = (direction: 'up' | 'down' | 'left' | 'right') => {
-    setKeyStates(prev => ({ ...prev, [`Arrow${direction.charAt(0).toUpperCase() + direction.slice(1)}`]: false }));
-  };
-  
-  // Handle checkpoint task
-  const handleTaskAnswer = (answerIndex: number) => {
-    setSelectedAnswer(answerIndex);
-  };
-  
-  const handleSubmitAnswer = () => {
-    if (selectedAnswer === null || !currentTask) return;
-    
-    const isCorrect = selectedAnswer === currentTask.correctIndex;
-    setIsTaskCorrect(isCorrect);
-    setShowTaskResult(true);
-    
-    if (isCorrect) {
-      // Award points for correct answer
-      setGameState(prev => ({
-        ...prev,
-        score: prev.score + 30
-      }));
-    } else {
-      // Penalty for wrong answer
-      setGameState(prev => ({
-        ...prev,
-        safetyViolations: prev.safetyViolations + 1,
-        score: Math.max(0, prev.score - 10)
-      }));
-    }
-  };
-  
-  const handleContinueAfterTask = () => {
-    // Mark current checkpoint as completed
-    setCheckpoints(prev => 
-      prev.map((c, i) => 
-        i === gameState.currentCheckpoint ? { ...c, completed: true } : c
-      )
-    );
-    
-    // Hide task and resume game
-    setShowCheckpointTask(false);
-    setGameState(prev => ({ ...prev, isPaused: false }));
-  };
-  
-  // Start game
-  const startGame = () => {
-    setShowTutorial(false);
-    setGameStarted(true);
+    setKeyStates(prev => ({ ...prev, [`arrow${direction}`]: false }));
   };
   
   // Restart game
   const restartGame = () => {
     setGameState({
-      score: 0,
+      phase: 'character_select',
       level: 1,
-      timeLeft: 120,
+      timeLeft: 300,
       isPaused: false,
-      isGameOver: false,
-      isLevelComplete: false,
-      safetyViolations: 0,
-      currentCheckpoint: 0
+      currentCheckpoint: 0,
+      showTip: false,
+      currentTip: null,
+      violations: 0,
+      safeActions: 0
     });
     
-    setShowTutorial(true);
-    setGameStarted(false);
-  };
-  
-  // Toggle pause
-  const togglePause = () => {
-    setGameState(prev => ({ ...prev, isPaused: !prev.isPaused }));
-  };
-  
-  // Toggle mute
-  const toggleMute = () => {
-    setIsMuted(!isMuted);
-  };
-  
-  // Get tutorial content
-  const getTutorialContent = () => {
-    const tutorials = [
-      {
-        title: "Welcome to Road Safety Quest!",
-        content: "Learn road safety principles while having fun. Navigate through the city, complete checkpoints, and follow traffic rules to reach your destination safely!",
-        image: "https://images.pexels.com/photos/210182/pexels-photo-210182.jpeg?auto=compress&cs=tinysrgb&w=400"
-      },
-      {
-        title: "Choose Your Character",
-        content: "Select your role: Pedestrian, Cyclist, or Driver. Each has different challenges and responsibilities on the road.",
-        image: null
-      },
-      {
-        title: "Game Controls",
-        content: isMobile 
-          ? "Use the on-screen arrow buttons to move your character. Tap the buttons to navigate through traffic."
-          : "Use the arrow keys or WASD to move your character. Navigate carefully through traffic and follow all rules.",
-        image: null
-      },
-      {
-        title: "Road Safety Principles",
-        content: "Remember the core principles: Awareness, Responsibility, Respect, and Preparation. These will guide you to make safe choices.",
-        image: "https://images.pexels.com/photos/2199293/pexels-photo-2199293.jpeg?auto=compress&cs=tinysrgb&w=400"
-      },
-      {
-        title: "Checkpoints & Challenges",
-        content: "At each checkpoint, you'll face a road safety challenge or question. Answer correctly to earn points and advance.",
-        image: null
-      },
-      {
-        title: "Ready to Play?",
-        content: "Remember: Stay alert, be responsible, show respect to all road users, and always be prepared. Good luck!",
-        image: null
-      }
-    ];
+    setPlayer({
+      x: 100,
+      y: 300,
+      width: 40,
+      height: 40,
+      speed: 5,
+      direction: 'right',
+      type: 'pedestrian',
+      isMoving: false,
+      lives: 3,
+      score: 0,
+      safetyGear: false
+    });
     
-    return tutorials[tutorialStep];
+    setCheckpoints(prev => 
+      prev.map(cp => ({ ...cp, completed: false }))
+    );
+    
+    setSelectedAnswer(null);
+    setShowFeedback(false);
   };
   
-  // Character selection screen
+  // Complete game and return to lesson
+  const completeGame = () => {
+    // Calculate final score percentage
+    const maxPossibleScore = checkpoints.length * 100 + 50; // 100 per checkpoint + 50 for safety gear
+    const percentage = Math.min(100, Math.round((player.score / maxPossibleScore) * 100));
+    
+    // Pass score back to parent component
+    onComplete(percentage);
+  };
+  
+  // Format time
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
+  
+  // Get character icon
+  const getCharacterIcon = (type: 'pedestrian' | 'cyclist' | 'driver') => {
+    switch (type) {
+      case 'pedestrian':
+        return <User className="h-6 w-6" />;
+      case 'cyclist':
+        return <Bike className="h-6 w-6" />;
+      case 'driver':
+        return <Car className="h-6 w-6" />;
+    }
+  };
+  
+  // Get checkpoint icon
+  const getCheckpointIcon = (type: string) => {
+    switch (type) {
+      case 'crosswalk':
+        return '🚶';
+      case 'traffic_light':
+        return '🚦';
+      case 'blind_turn':
+        return '↩️';
+      case 'intersection':
+        return '➕';
+      case 'parking':
+        return '🅿️';
+      default:
+        return '📍';
+    }
+  };
+  
+  // Get obstacle icon
+  const getObstacleIcon = (type: string) => {
+    switch (type) {
+      case 'car':
+        return '🚗';
+      case 'pedestrian':
+        return '🚶';
+      case 'cyclist':
+        return '🚴';
+      case 'pothole':
+        return '🕳️';
+      case 'construction':
+        return '🚧';
+      default:
+        return '⚠️';
+    }
+  };
+  
+  // Get principle color
+  const getPrincipleColor = (principle: string) => {
+    switch (principle) {
+      case 'awareness':
+        return 'text-blue-600 bg-blue-100 border-blue-300';
+      case 'responsibility':
+        return 'text-yellow-600 bg-yellow-100 border-yellow-300';
+      case 'respect':
+        return 'text-red-600 bg-red-100 border-red-300';
+      case 'preparation':
+        return 'text-green-600 bg-green-100 border-green-300';
+      default:
+        return 'text-gray-600 bg-gray-100 border-gray-300';
+    }
+  };
+  
+  // Render character selection screen
   const renderCharacterSelection = () => {
     return (
-      <div className="p-6 bg-white rounded-xl shadow-lg">
-        <h3 className="text-xl font-bold text-gray-900 mb-4 text-center">Choose Your Character</h3>
+      <div className="text-center p-8">
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          className="text-6xl mb-6"
+        >
+          🛣️
+        </motion.div>
+        <h2 className="text-3xl font-bold text-gray-900 mb-4">Road Safety Quest</h2>
+        <p className="text-gray-600 mb-8 text-lg leading-relaxed">
+          Choose your character to begin your journey through the city. Each character faces unique challenges!
+        </p>
         
-        <div className="grid grid-cols-3 gap-4 mb-6">
-          <button
-            onClick={() => setPlayerType('pedestrian')}
-            className={`p-4 rounded-xl transition-all ${
-              playerType === 'pedestrian' 
-                ? 'bg-blue-100 border-2 border-blue-500' 
-                : 'bg-gray-100 hover:bg-gray-200'
-            }`}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <motion.button
+            onClick={() => selectCharacter('pedestrian')}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-6 hover:bg-blue-100 transition-colors"
           >
-            <div className="text-4xl mb-2 text-center">🚶</div>
-            <div className="text-sm font-medium text-center">Pedestrian</div>
-          </button>
+            <div className="text-5xl mb-4">🚶</div>
+            <h3 className="text-xl font-bold text-blue-800 mb-2">Pedestrian</h3>
+            <p className="text-blue-600 text-sm">
+              Navigate the city on foot. Focus on crosswalks, traffic signals, and staying visible.
+            </p>
+            <div className="mt-4 text-xs text-blue-500 bg-blue-50 p-2 rounded-lg">
+              <strong>Speed:</strong> Slow • <strong>Challenges:</strong> Crossing roads, visibility
+            </div>
+          </motion.button>
           
-          <button
-            onClick={() => setPlayerType('cyclist')}
-            className={`p-4 rounded-xl transition-all ${
-              playerType === 'cyclist' 
-                ? 'bg-green-100 border-2 border-green-500' 
-                : 'bg-gray-100 hover:bg-gray-200'
-            }`}
+          <motion.button
+            onClick={() => selectCharacter('cyclist')}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="bg-green-50 border-2 border-green-200 rounded-2xl p-6 hover:bg-green-100 transition-colors"
           >
-            <div className="text-4xl mb-2 text-center">🚴</div>
-            <div className="text-sm font-medium text-center">Cyclist</div>
-          </button>
+            <div className="text-5xl mb-4">🚴</div>
+            <h3 className="text-xl font-bold text-green-800 mb-2">Cyclist</h3>
+            <p className="text-green-600 text-sm">
+              Ride through the city on your bike. Balance speed with safety and follow cycling rules.
+            </p>
+            <div className="mt-4 text-xs text-green-500 bg-green-50 p-2 rounded-lg">
+              <strong>Speed:</strong> Fast • <strong>Challenges:</strong> Traffic rules, safety gear
+            </div>
+          </motion.button>
           
-          <button
-            onClick={() => setPlayerType('driver')}
-            className={`p-4 rounded-xl transition-all ${
-              playerType === 'driver' 
-                ? 'bg-purple-100 border-2 border-purple-500' 
-                : 'bg-gray-100 hover:bg-gray-200'
-            }`}
+          <motion.button
+            onClick={() => selectCharacter('driver')}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="bg-orange-50 border-2 border-orange-200 rounded-2xl p-6 hover:bg-orange-100 transition-colors"
           >
-            <div className="text-4xl mb-2 text-center">🚗</div>
-            <div className="text-sm font-medium text-center">Driver</div>
-          </button>
+            <div className="text-5xl mb-4">🚗</div>
+            <h3 className="text-xl font-bold text-orange-800 mb-2">Driver</h3>
+            <p className="text-orange-600 text-sm">
+              Drive a car through city streets. Focus on traffic laws, parking, and vehicle safety.
+            </p>
+            <div className="mt-4 text-xs text-orange-500 bg-orange-50 p-2 rounded-lg">
+              <strong>Speed:</strong> Medium • <strong>Challenges:</strong> Traffic laws, parking
+            </div>
+          </motion.button>
         </div>
         
-        <div className="bg-gray-50 p-4 rounded-lg mb-4">
-          <h4 className="font-medium text-gray-800 mb-2">Character Details:</h4>
-          {playerType === 'pedestrian' && (
-            <p className="text-sm text-gray-600">
-              As a pedestrian, you'll learn about crossing roads safely, using sidewalks, and being visible to drivers.
-            </p>
-          )}
-          {playerType === 'cyclist' && (
-            <p className="text-sm text-gray-600">
-              As a cyclist, you'll learn about bike lanes, signaling turns, wearing safety gear, and sharing the road.
-            </p>
-          )}
-          {playerType === 'driver' && (
-            <p className="text-sm text-gray-600">
-              As a driver, you'll learn about traffic signals, yielding right-of-way, safe following distances, and avoiding distractions.
-            </p>
-          )}
-        </div>
-        
-        <div className="text-center">
-          <button
-            onClick={() => setTutorialStep(tutorialStep + 1)}
-            className="px-6 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg shadow-md hover:shadow-lg transition-all"
-          >
-            Continue
-          </button>
+        <div className="bg-gray-50 rounded-xl p-4 text-sm text-gray-600 max-w-2xl mx-auto">
+          <p>
+            <strong>Game Objective:</strong> Navigate safely from home to your destination by following road safety principles: 
+            awareness, responsibility, respect, and preparation.
+          </p>
         </div>
       </div>
     );
   };
   
-  // Render game UI
-  const renderGameUI = () => {
-    if (showTutorial) {
-      const tutorial = getTutorialContent();
-      
-      return (
-        <div className="text-center p-8">
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            className="text-6xl mb-6"
-          >
-            {tutorialStep === 0 ? '🚦' : 
-             tutorialStep === 1 ? '👤' : 
-             tutorialStep === 2 ? '🎮' : 
-             tutorialStep === 3 ? '🛑' : 
-             tutorialStep === 4 ? '🏁' : '🚀'}
-          </motion.div>
+  // Render instructions screen
+  const renderInstructions = () => {
+    return (
+      <div className="text-center p-8">
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          className="text-6xl mb-6"
+        >
+          {player.type === 'pedestrian' ? '🚶' : player.type === 'cyclist' ? '🚴' : '🚗'}
+        </motion.div>
+        <h2 className="text-3xl font-bold text-gray-900 mb-4">How to Play</h2>
+        
+        <div className="bg-white rounded-2xl p-6 mb-6 shadow-lg border border-gray-200 max-w-3xl mx-auto">
+          <h3 className="text-xl font-bold text-gray-800 mb-4">Game Instructions</h3>
           
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">
-            {tutorial.title}
-          </h2>
-          
-          {tutorial.image && (
-            <div className="mb-6">
-              <img 
-                src={tutorial.image} 
-                alt="Tutorial" 
-                className="w-full max-w-md mx-auto h-48 object-cover rounded-xl"
-              />
+          <div className="grid md:grid-cols-2 gap-6 mb-6">
+            <div className="bg-blue-50 rounded-xl p-4 text-left">
+              <h4 className="font-bold text-blue-800 mb-2 flex items-center">
+                <MapPin className="h-5 w-5 mr-2" />
+                Your Mission
+              </h4>
+              <ul className="text-blue-700 space-y-2 text-sm">
+                <li>• Navigate through the city safely</li>
+                <li>• Visit all 5 checkpoints in order</li>
+                <li>• Answer safety questions correctly</li>
+                <li>• Avoid collisions with obstacles</li>
+                <li>• Reach your destination before time runs out</li>
+              </ul>
             </div>
-          )}
-          
-          <p className="text-gray-600 mb-8 text-lg leading-relaxed">
-            {tutorial.content}
-          </p>
-          
-          {tutorialStep === 1 && renderCharacterSelection()}
-          
-          {tutorialStep !== 1 && (
-            <div className="flex justify-center space-x-4">
-              {tutorialStep > 0 && (
-                <button
-                  onClick={() => setTutorialStep(prev => prev - 1)}
-                  className="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors"
-                >
-                  Previous
-                </button>
-              )}
-              
-              {tutorialStep < 5 ? (
-                <button
-                  onClick={() => setTutorialStep(prev => prev + 1)}
-                  className="px-6 py-3 text-white rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl"
-                  style={{ background: `linear-gradient(135deg, ${theme.primaryColor}, ${theme.secondaryColor})` }}
-                >
-                  Next
-                </button>
-              ) : (
-                <motion.button
-                  onClick={startGame}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="px-8 py-3 text-white rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl flex items-center space-x-2"
-                  style={{ background: `linear-gradient(135deg, ${theme.primaryColor}, ${theme.secondaryColor})` }}
-                >
-                  <Play className="h-5 w-5" />
-                  <span>Start Game</span>
-                </motion.button>
-              )}
-            </div>
-          )}
-        </div>
-      );
-    }
-    
-    if (gameState.isGameOver) {
-      const finalScore = gameState.score;
-      const maxPossibleScore = 1000; // Adjust based on your scoring system
-      const percentage = Math.min(100, Math.round((finalScore / maxPossibleScore) * 100));
-      
-      return (
-        <div className="text-center p-8">
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            className="text-6xl mb-6"
-          >
-            {percentage >= 80 ? '🏆' : percentage >= 60 ? '🌟' : '👍'}
-          </motion.div>
-          
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">
-            {gameState.isLevelComplete ? "Journey Complete!" : "Game Over"}
-          </h2>
-          
-          <div className="grid grid-cols-2 gap-4 mb-6 p-6 bg-gradient-to-r from-green-50 to-blue-50 rounded-2xl border border-green-200">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-600 mb-1">{gameState.score}</div>
-              <div className="text-sm text-gray-600">Final Score</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600 mb-1">{checkpoints.filter(c => c.completed).length}</div>
-              <div className="text-sm text-gray-600">Checkpoints</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-red-600 mb-1">{gameState.safetyViolations}</div>
-              <div className="text-sm text-gray-600">Violations</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-yellow-600 mb-1">{percentage}%</div>
-              <div className="text-sm text-gray-600">Performance</div>
-            </div>
-          </div>
-          
-          <div className="bg-blue-50 rounded-2xl p-6 mb-6 border border-blue-200">
-            <h3 className="font-bold text-blue-900 mb-2">Road Safety Assessment:</h3>
-            <p className="text-blue-800 text-sm">
-              {percentage >= 80 
-                ? "Excellent! You've demonstrated outstanding knowledge of road safety principles. Your awareness, responsibility, respect, and preparation would make you a model road user."
-                : percentage >= 60 
-                ? "Good job! You have a solid understanding of road safety, but there's room for improvement in consistently applying all safety principles."
-                : "You've completed the journey, but should review road safety principles more carefully. Remember that awareness, responsibility, respect, and preparation are key to staying safe."}
-            </p>
-          </div>
-          
-          <div className="flex justify-center space-x-4">
-            <button
-              onClick={restartGame}
-              className="flex items-center space-x-2 px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors"
-            >
-              <RotateCcw className="h-4 w-4" />
-              <span>Play Again</span>
-            </button>
             
-            <button
-              onClick={() => onComplete(percentage)}
-              className="flex items-center space-x-2 px-6 py-3 text-white rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl"
+            <div className="bg-green-50 rounded-xl p-4 text-left">
+              <h4 className="font-bold text-green-800 mb-2 flex items-center">
+                <Award className="h-5 w-5 mr-2" />
+                Scoring System
+              </h4>
+              <ul className="text-green-700 space-y-2 text-sm">
+                <li>• +100 points for each correct answer</li>
+                <li>• +50 points for using safety gear</li>
+                <li>• -50 points for incorrect answers</li>
+                <li>• -1 life for collisions with obstacles</li>
+                <li>• Game ends when you run out of lives or time</li>
+              </ul>
+            </div>
+          </div>
+          
+          <div className="bg-yellow-50 rounded-xl p-4 text-left mb-6">
+            <h4 className="font-bold text-yellow-800 mb-2 flex items-center">
+              <Zap className="h-5 w-5 mr-2" />
+              Controls
+            </h4>
+            <div className="grid md:grid-cols-2 gap-4 text-sm">
+              <div className="text-yellow-700">
+                <p className="font-medium mb-1">Keyboard:</p>
+                <ul className="space-y-1">
+                  <li>• ↑ or W: Move up</li>
+                  <li>• ↓ or S: Move down</li>
+                  <li>• ← or A: Move left</li>
+                  <li>• → or D: Move right</li>
+                  <li>• Space: Interact / Answer</li>
+                </ul>
+              </div>
+              <div className="text-yellow-700">
+                <p className="font-medium mb-1">Mobile:</p>
+                <ul className="space-y-1">
+                  <li>• On-screen arrow buttons to move</li>
+                  <li>• Tap checkpoints to interact</li>
+                  <li>• Tap options to select answers</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          
+          {player.type !== 'pedestrian' && (
+            <div className="flex items-center justify-between bg-red-50 rounded-xl p-4 mb-6">
+              <div className="flex items-center">
+                <Shield className="h-6 w-6 text-red-600 mr-2" />
+                <div className="text-left">
+                  <h4 className="font-bold text-red-800">Safety Gear</h4>
+                  <p className="text-sm text-red-700">
+                    {player.type === 'cyclist' ? 
+                      "Wearing a helmet is essential for cycling safety!" : 
+                      "Always wear your seatbelt when driving!"}
+                  </p>
+                </div>
+              </div>
+              <motion.button
+                onClick={toggleSafetyGear}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className={`px-4 py-2 rounded-lg text-white font-medium ${
+                  player.safetyGear ? 'bg-green-600' : 'bg-red-600'
+                }`}
+              >
+                {player.safetyGear ? 'Safety Gear On ✓' : 'Wear Safety Gear'}
+              </motion.button>
+            </div>
+          )}
+          
+          <div className="flex justify-center">
+            <motion.button
+              onClick={startGame}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="text-white px-8 py-3 rounded-xl font-bold text-lg shadow-xl hover:shadow-2xl flex items-center space-x-2"
               style={{ background: `linear-gradient(135deg, ${theme.primaryColor}, ${theme.secondaryColor})` }}
             >
-              <Trophy className="h-4 w-4" />
-              <span>Continue</span>
-            </button>
+              <Play className="h-5 w-5" />
+              <span>Start Your Journey</span>
+            </motion.button>
           </div>
         </div>
-      );
-    }
-    
-    if (showCheckpointTask && currentTask) {
-      return (
-        <div className="p-8 bg-white rounded-xl shadow-lg">
-          <div className="text-center mb-6">
-            <motion.div
-              animate={{ scale: [1, 1.1, 1] }}
-              transition={{ duration: 1, repeat: Infinity }}
-              className="text-4xl mb-4"
-            >
-              🚦
-            </motion.div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">Road Safety Challenge</h3>
-            <p className="text-gray-600">Answer correctly to proceed!</p>
-          </div>
-          
-          <div className="mb-6">
-            <h4 className="text-xl font-bold text-gray-800 mb-4">{currentTask.question}</h4>
-            
-            <div className="space-y-3">
-              {currentTask.options.map((option, index) => (
-                <button
-                  key={index}
-                  onClick={() => handleTaskAnswer(index)}
-                  disabled={showTaskResult}
-                  className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
-                    showTaskResult
-                      ? index === currentTask.correctIndex
-                        ? 'bg-green-50 border-green-500 text-green-800'
-                        : index === selectedAnswer
-                        ? 'bg-red-50 border-red-500 text-red-800'
-                        : 'bg-gray-50 border-gray-200 text-gray-500'
-                      : selectedAnswer === index
-                      ? 'bg-blue-50 border-blue-500 text-blue-800'
-                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                      showTaskResult
-                        ? index === currentTask.correctIndex
-                          ? 'bg-green-500 text-white'
-                          : index === selectedAnswer
-                          ? 'bg-red-500 text-white'
-                          : 'border-2 border-gray-300'
-                        : selectedAnswer === index
-                        ? 'bg-blue-500 text-white'
-                        : 'border-2 border-gray-300'
-                    }`}>
-                      {showTaskResult && index === currentTask.correctIndex && (
-                        <CheckCircle className="h-4 w-4" />
-                      )}
-                      {showTaskResult && index === selectedAnswer && index !== currentTask.correctIndex && (
-                        <XCircle className="h-4 w-4" />
-                      )}
-                      {!showTaskResult && selectedAnswer === index && (
-                        <div className="w-2 h-2 bg-white rounded-full"></div>
-                      )}
-                    </div>
-                    <span>{option}</span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-          
-          {showTaskResult ? (
-            <div className="mb-6">
-              <div className={`p-4 rounded-xl ${isTaskCorrect ? 'bg-green-50 border border-green-200' : 'bg-blue-50 border border-blue-200'}`}>
-                <div className="flex items-center space-x-2 mb-2">
-                  {isTaskCorrect ? (
-                    <CheckCircle className="h-5 w-5 text-green-600" />
-                  ) : (
-                    <Info className="h-5 w-5 text-blue-600" />
-                  )}
-                  <span className={`font-medium ${isTaskCorrect ? 'text-green-800' : 'text-blue-800'}`}>
-                    {isTaskCorrect ? 'Correct! +30 points' : 'Important Safety Information:'}
-                  </span>
-                </div>
-                <p className={`text-sm ${isTaskCorrect ? 'text-green-700' : 'text-blue-700'}`}>
-                  {currentTask.explanation}
-                </p>
-              </div>
-              
-              <div className="text-center mt-6">
-                <button
-                  onClick={handleContinueAfterTask}
-                  className="px-6 py-3 text-white rounded-xl shadow-md hover:shadow-lg transition-all"
-                  style={{ background: `linear-gradient(135deg, ${theme.primaryColor}, ${theme.secondaryColor})` }}
-                >
-                  Continue Journey
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="text-center">
-              <button
-                onClick={handleSubmitAnswer}
-                disabled={selectedAnswer === null}
-                className="px-6 py-3 text-white rounded-xl shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ background: `linear-gradient(135deg, ${theme.primaryColor}, ${theme.secondaryColor})` }}
-              >
-                Submit Answer
-              </button>
-            </div>
-          )}
+        
+        <div className="text-sm text-gray-500 max-w-2xl mx-auto">
+          <p>
+            <strong>Remember:</strong> The goal is to learn and practice road safety principles. 
+            Take your time and make safe choices!
+          </p>
         </div>
-      );
-    }
-    
+      </div>
+    );
+  };
+  
+  // Render game screen
+  const renderGameScreen = () => {
     return (
       <div className="max-w-4xl mx-auto">
         {/* Game HUD */}
         <div className="flex items-center justify-between mb-6 p-4 bg-white rounded-2xl shadow-lg border border-gray-100">
           <div className="flex items-center space-x-6">
             <div className="text-center">
-              <div className="text-2xl font-bold text-gray-900">{gameState.score}</div>
+              <div className="text-2xl font-bold text-gray-900">{player.score}</div>
               <div className="text-sm text-gray-600">Score</div>
             </div>
             <div className="text-center">
@@ -1223,28 +1114,30 @@ const RoadSafetyQuest: React.FC<RoadSafetyQuestProps> = ({
               <div className="text-sm text-gray-600">Lives</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">{checkpoints.filter(c => c.completed).length}/{checkpoints.length}</div>
-              <div className="text-sm text-gray-600">Checkpoints</div>
+              <div className="text-2xl font-bold text-blue-600">
+                {gameState.currentCheckpoint + 1}/{checkpoints.length}
+              </div>
+              <div className="text-sm text-gray-600">Checkpoint</div>
             </div>
           </div>
           
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-2">
               <Clock className="h-5 w-5 text-gray-600" />
-              <span className={`text-lg font-bold ${gameState.timeLeft <= 30 ? 'text-red-600' : 'text-gray-900'}`}>
-                {gameState.timeLeft}s
+              <span className={`text-lg font-bold ${gameState.timeLeft <= 60 ? 'text-red-600' : 'text-gray-900'}`}>
+                {formatTime(gameState.timeLeft)}
               </span>
             </div>
             
             <button
-              onClick={togglePause}
+              onClick={() => setGameState(prev => ({ ...prev, isPaused: !prev.isPaused }))}
               className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
             >
               {gameState.isPaused ? <Play className="h-5 w-5" /> : <Pause className="h-5 w-5" />}
             </button>
             
             <button
-              onClick={toggleMute}
+              onClick={() => setIsMuted(!isMuted)}
               className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
             >
               {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
@@ -1258,137 +1151,77 @@ const RoadSafetyQuest: React.FC<RoadSafetyQuestProps> = ({
           className="relative bg-gray-200 rounded-3xl overflow-hidden shadow-2xl mb-6" 
           style={{ height: '400px' }}
         >
-          {/* Road background */}
-          <div className="absolute inset-0 bg-gray-700">
-            {/* Horizontal road */}
-            <div className="absolute top-1/2 left-0 right-0 h-20 bg-gray-600 transform -translate-y-1/2">
-              {/* Road markings */}
-              <div className="absolute top-1/2 left-0 right-0 h-1 bg-yellow-400 transform -translate-y-1/2 dashed-line"></div>
-            </div>
+          {/* City background */}
+          <div className="absolute inset-0 bg-gray-300">
+            {/* Roads */}
+            <div className="absolute top-1/3 left-0 right-0 h-20 bg-gray-700"></div>
+            <div className="absolute left-1/3 top-0 bottom-0 w-20 bg-gray-700"></div>
+            <div className="absolute top-2/3 left-0 right-0 h-20 bg-gray-700"></div>
             
-            {/* Vertical roads at intersections */}
-            {obstacles.filter(o => o.type === 'intersection').map((intersection, index) => (
-              <div 
-                key={`intersection-${index}`}
-                className="absolute bg-gray-600"
-                style={{
-                  left: intersection.x,
-                  top: 0,
-                  width: intersection.width,
-                  height: '100%'
-                }}
-              >
-                <div className="absolute left-1/2 top-0 bottom-0 w-1 bg-yellow-400 transform -translate-x-1/2 dashed-line"></div>
-              </div>
-            ))}
-            
-            {/* Crosswalks */}
-            {obstacles.filter(o => o.type === 'crosswalk').map((crosswalk, index) => (
-              <div 
-                key={`crosswalk-${index}`}
-                className="absolute bg-white/70"
-                style={{
-                  left: crosswalk.x,
-                  top: crosswalk.y,
-                  width: crosswalk.width,
-                  height: crosswalk.height
-                }}
-              >
-                {[...Array(5)].map((_, i) => (
-                  <div 
-                    key={i}
-                    className="absolute bg-white h-full"
-                    style={{
-                      left: `${i * 20}%`,
-                      width: '10%'
-                    }}
-                  />
-                ))}
-              </div>
-            ))}
+            {/* Road markings */}
+            <div className="absolute top-1/3 left-0 right-0 h-1 bg-yellow-400 transform translate-y-10"></div>
+            <div className="absolute top-2/3 left-0 right-0 h-1 bg-yellow-400 transform translate-y-10"></div>
+            <div className="absolute left-1/3 top-0 bottom-0 w-1 bg-yellow-400 transform translate-x-10"></div>
           </div>
           
-          {/* Render obstacles */}
-          {obstacles.map((obstacle, index) => (
+          {/* Checkpoints */}
+          {checkpoints.map((checkpoint, index) => (
             <div
-              key={`obstacle-${index}`}
-              className="absolute"
+              key={checkpoint.id}
+              className={`absolute flex items-center justify-center ${
+                checkpoint.completed ? 'opacity-50' : 
+                index === gameState.currentCheckpoint ? 'animate-pulse' : 'opacity-70'
+              }`}
+              style={{
+                left: checkpoint.x,
+                top: checkpoint.y,
+                width: checkpoint.width,
+                height: checkpoint.height,
+                zIndex: 10
+              }}
+            >
+              <div className={`text-4xl ${
+                index === gameState.currentCheckpoint ? 'scale-125' : ''
+              }`}>
+                {getCheckpointIcon(checkpoint.type)}
+              </div>
+              {index === gameState.currentCheckpoint && (
+                <div className="absolute -bottom-6 text-xs font-bold bg-white px-2 py-1 rounded-lg shadow-md">
+                  Checkpoint {index + 1}
+                </div>
+              )}
+            </div>
+          ))}
+          
+          {/* Obstacles */}
+          {obstacles.map(obstacle => (
+            <div
+              key={obstacle.id}
+              className="absolute flex items-center justify-center"
               style={{
                 left: obstacle.x,
                 top: obstacle.y,
                 width: obstacle.width,
                 height: obstacle.height,
+                zIndex: 20,
                 transform: obstacle.direction === 'left' ? 'scaleX(-1)' : 'none'
               }}
             >
-              {obstacle.type === 'car' && (
-                <div className={`w-full h-full flex items-center justify-center rounded-lg ${
-                  obstacle.behavior === 'distracted' ? 'bg-red-500' : 
-                  obstacle.behavior === 'reckless' ? 'bg-orange-500' : 'bg-blue-500'
-                }`}>
-                  🚗
-                </div>
-              )}
-              
-              {obstacle.type === 'pedestrian' && (
-                <div className="w-full h-full flex items-center justify-center">
-                  🚶
-                </div>
-              )}
-              
-              {obstacle.type === 'trafficLight' && (
-                <div className="w-full h-full bg-gray-800 rounded-lg flex flex-col items-center justify-center p-1">
-                  <div className={`w-4 h-4 rounded-full mb-1 ${obstacle.state === 'red' ? 'bg-red-500' : 'bg-red-900'}`}></div>
-                  <div className={`w-4 h-4 rounded-full mb-1 ${obstacle.state === 'yellow' ? 'bg-yellow-500' : 'bg-yellow-900'}`}></div>
-                  <div className={`w-4 h-4 rounded-full ${obstacle.state === 'green' ? 'bg-green-500' : 'bg-green-900'}`}></div>
-                </div>
-              )}
-              
-              {obstacle.type === 'sign' && (
-                <div className="w-full h-full flex items-center justify-center bg-red-500 rounded-lg text-white font-bold">
-                  {obstacle.state === 'stop' && 'STOP'}
-                  {obstacle.state === 'yield' && '⚠️'}
-                  {obstacle.state === 'no-entry' && '⛔'}
-                </div>
-              )}
-            </div>
-          ))}
-          
-          {/* Render checkpoints */}
-          {checkpoints.map((checkpoint, index) => (
-            <div
-              key={`checkpoint-${index}`}
-              className={`absolute border-2 ${
-                checkpoint.completed ? 'border-green-500 bg-green-100/30' : 
-                checkpoint.type === 'destination' ? 'border-purple-500 bg-purple-100/30 animate-pulse' : 
-                'border-yellow-500 bg-yellow-100/30'
-              } rounded-lg`}
-              style={{
-                left: checkpoint.x,
-                top: checkpoint.y,
-                width: checkpoint.width,
-                height: checkpoint.height
-              }}
-            >
-              <div className="absolute inset-0 flex items-center justify-center">
-                {checkpoint.type === 'crosswalk' && '🚶'}
-                {checkpoint.type === 'trafficSignal' && '🚦'}
-                {checkpoint.type === 'blindTurn' && '↩️'}
-                {checkpoint.type === 'zebraCrossing' && '🦓'}
-                {checkpoint.type === 'parkingZone' && '🅿️'}
-                {checkpoint.type === 'destination' && '🏁'}
+              <div className="text-2xl">
+                {getObstacleIcon(obstacle.type)}
               </div>
             </div>
           ))}
           
-          {/* Render player */}
+          {/* Player */}
           <div
-            className="absolute transition-all duration-100"
+            className="absolute flex items-center justify-center transition-all duration-100"
             style={{
               left: player.x,
               top: player.y,
               width: player.width,
               height: player.height,
+              zIndex: 30,
               transform: `rotate(${
                 player.direction === 'right' ? 0 :
                 player.direction === 'down' ? 90 :
@@ -1397,16 +1230,48 @@ const RoadSafetyQuest: React.FC<RoadSafetyQuestProps> = ({
               }deg)`
             }}
           >
-            <div className="w-full h-full flex items-center justify-center bg-green-500 rounded-lg">
-              {player.type === 'pedestrian' && '🚶'}
-              {player.type === 'cyclist' && '🚴'}
-              {player.type === 'driver' && '🚗'}
+            <div className="relative">
+              <div className="text-3xl">
+                {player.type === 'pedestrian' ? '🚶' : 
+                 player.type === 'cyclist' ? '🚴' : '🚗'}
+              </div>
+              {player.safetyGear && (
+                <div className="absolute -top-2 -right-2 text-sm">
+                  {player.type === 'cyclist' ? '⛑️' : '🦺'}
+                </div>
+              )}
             </div>
           </div>
           
-          {/* Mobile controls */}
+          {/* Safety Tip */}
+          <AnimatePresence>
+            {gameState.showTip && gameState.currentTip && (
+              <motion.div
+                initial={{ opacity: 0, y: 50 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -50 }}
+                className={`absolute bottom-4 left-1/2 transform -translate-x-1/2 max-w-md p-4 rounded-xl shadow-lg border ${
+                  getPrincipleColor(gameState.currentTip.principle)
+                }`}
+              >
+                <div className="flex items-start space-x-3">
+                  <div className="flex-shrink-0 mt-1">
+                    {gameState.currentTip.icon}
+                  </div>
+                  <div>
+                    <div className="font-bold mb-1">
+                      Safety Tip: {gameState.currentTip.principle.charAt(0).toUpperCase() + gameState.currentTip.principle.slice(1)}
+                    </div>
+                    <p className="text-sm">{gameState.currentTip.text}</p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          
+          {/* Mobile Controls */}
           {isMobile && (
-            <div className="absolute bottom-4 right-4 grid grid-cols-3 gap-2">
+            <div className="absolute bottom-4 right-4 grid grid-cols-3 gap-2 z-40">
               <div className="col-start-2">
                 <button
                   onTouchStart={() => handleTouchStart('up')}
@@ -1446,63 +1311,36 @@ const RoadSafetyQuest: React.FC<RoadSafetyQuestProps> = ({
             </div>
           )}
           
-          {/* Success/Fail Messages */}
-          <AnimatePresence>
-            {showSuccessMessage && (
-              <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-4 py-2 rounded-lg"
-              >
-                {successMessage}
-              </motion.div>
-            )}
-            
-            {showFailMessage && (
-              <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-4 py-2 rounded-lg"
-              >
-                {failMessage}
-              </motion.div>
-            )}
-          </AnimatePresence>
-          
           {/* Pause Overlay */}
-          {gameState.isPaused && !showCheckpointTask && (
-            <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-30">
+          {gameState.isPaused && gameState.phase === 'playing' && (
+            <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50">
               <div className="bg-white rounded-2xl p-6 text-center">
                 <h3 className="text-xl font-bold text-gray-900 mb-4">Game Paused</h3>
                 <div className="flex space-x-4">
                   <button
-                    onClick={togglePause}
+                    onClick={() => setGameState(prev => ({ ...prev, isPaused: false }))}
                     className="px-6 py-2 text-white rounded-xl"
                     style={{ background: theme.primaryColor }}
                   >
                     Resume
                   </button>
                   <button
-                    onClick={() => setShowSettings(!showSettings)}
+                    onClick={() => setShowHelp(!showHelp)}
                     className="px-6 py-2 bg-gray-100 text-gray-700 rounded-xl"
                   >
-                    Settings
+                    Help
                   </button>
                 </div>
                 
-                {showSettings && (
+                {showHelp && (
                   <div className="mt-4 pt-4 border-t border-gray-200">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-gray-700">Sound</span>
-                      <button
-                        onClick={toggleMute}
-                        className="p-2 bg-gray-100 rounded-lg"
-                      >
-                        {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
-                      </button>
-                    </div>
+                    <h4 className="font-bold text-gray-800 mb-2">How to Play</h4>
+                    <ul className="text-sm text-gray-600 text-left space-y-1">
+                      <li>• Use arrow keys or WASD to move</li>
+                      <li>• Reach checkpoints to answer safety questions</li>
+                      <li>• Avoid obstacles to prevent losing lives</li>
+                      <li>• Complete all checkpoints before time runs out</li>
+                    </ul>
                     <button
                       onClick={restartGame}
                       className="w-full mt-4 px-4 py-2 bg-red-100 text-red-700 rounded-lg"
@@ -1516,34 +1354,324 @@ const RoadSafetyQuest: React.FC<RoadSafetyQuestProps> = ({
           )}
         </div>
         
-        {/* Safety Tip */}
+        {/* Game Instructions */}
         <div className="mt-6 p-4 bg-blue-50 rounded-2xl border border-blue-200">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="font-bold text-blue-900">Safety Tip:</h3>
+            <h3 className="font-bold text-blue-900">Current Objective:</h3>
             <button
-              onClick={() => setShowTutorial(true)}
+              onClick={() => setShowHelp(!showHelp)}
               className="text-blue-600 hover:text-blue-800 transition-colors"
             >
               <HelpCircle className="h-5 w-5" />
             </button>
           </div>
-          <div className="flex items-center space-x-3">
-            {safetyTips[gameState.level % safetyTips.length].icon}
-            <p className="text-blue-800 text-sm">
-              {safetyTips[gameState.level % safetyTips.length].text}
-            </p>
-          </div>
+          <p className="text-blue-800 text-sm">
+            Navigate to the {getCheckpointIcon(checkpoints[gameState.currentCheckpoint]?.type || 'crosswalk')} checkpoint 
+            {gameState.currentCheckpoint + 1} to answer a safety question. Avoid obstacles and follow road safety rules!
+          </p>
           <div className="mt-2 text-xs text-blue-700">
             {isMobile 
-              ? "Use the on-screen controls to navigate. Tap the buttons to move your character."
-              : "Use arrow keys or WASD to move. Follow traffic rules to earn points and avoid penalties."}
+              ? "Use the on-screen controls to navigate. Tap to interact with checkpoints."
+              : "Use arrow keys or WASD to move. Approach checkpoints to interact with them."}
           </div>
         </div>
       </div>
     );
   };
   
-  return renderGameUI();
+  // Render checkpoint question
+  const renderCheckpointQuestion = () => {
+    const currentCheckpoint = checkpoints[gameState.currentCheckpoint];
+    const question = currentCheckpoint.question;
+    
+    if (!question) return null;
+    
+    return (
+      <div className="max-w-3xl mx-auto">
+        <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100">
+          <div className="flex items-center space-x-3 mb-6">
+            <div className="text-4xl">
+              {getCheckpointIcon(currentCheckpoint.type)}
+            </div>
+            <div>
+              <h3 className="text-2xl font-bold text-gray-900">Safety Checkpoint</h3>
+              <p className="text-gray-600">Answer correctly to continue your journey</p>
+            </div>
+          </div>
+          
+          <div className={`p-4 rounded-xl mb-6 ${getPrincipleColor(question.principle)}`}>
+            <div className="font-bold mb-2">
+              {question.principle.charAt(0).toUpperCase() + question.principle.slice(1)} Principle
+            </div>
+            <p>{question.text}</p>
+          </div>
+          
+          <div className="space-y-3 mb-6">
+            {question.options.map((option, index) => (
+              <motion.button
+                key={index}
+                onClick={() => handleAnswerSelect(index)}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className={`w-full text-left p-4 rounded-xl border-2 transition-all duration-200 ${
+                  selectedAnswer === index
+                    ? 'border-blue-500 bg-blue-50 text-blue-900'
+                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                <div className="flex items-center space-x-3">
+                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                    selectedAnswer === index
+                      ? 'border-blue-500 bg-blue-500'
+                      : 'border-gray-300'
+                  }`}>
+                    {selectedAnswer === index && (
+                      <div className="w-2 h-2 bg-white rounded-full"></div>
+                    )}
+                  </div>
+                  <span className="font-medium">{option}</span>
+                </div>
+              </motion.button>
+            ))}
+          </div>
+          
+          <AnimatePresence>
+            {showFeedback && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className={`p-4 rounded-xl mb-6 ${
+                  feedbackCorrect ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+                }`}
+              >
+                <div className="flex items-center space-x-3">
+                  {feedbackCorrect ? (
+                    <CheckCircle className="h-6 w-6 text-green-600" />
+                  ) : (
+                    <XCircle className="h-6 w-6 text-red-600" />
+                  )}
+                  <div>
+                    <div className={`font-bold ${feedbackCorrect ? 'text-green-800' : 'text-red-800'}`}>
+                      {feedbackCorrect ? 'Correct!' : 'Not quite right'}
+                    </div>
+                    <p className={`text-sm ${feedbackCorrect ? 'text-green-700' : 'text-red-700'}`}>
+                      {question.explanation}
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          
+          <motion.button
+            onClick={submitAnswer}
+            disabled={selectedAnswer === null || showFeedback}
+            whileHover={{ scale: selectedAnswer !== null && !showFeedback ? 1.05 : 1 }}
+            whileTap={{ scale: selectedAnswer !== null && !showFeedback ? 0.95 : 1 }}
+            className="w-full text-white py-3 px-4 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ background: `linear-gradient(135deg, ${theme.primaryColor}, ${theme.secondaryColor})` }}
+          >
+            Submit Answer
+          </motion.button>
+        </div>
+      </div>
+    );
+  };
+  
+  // Render game over screen
+  const renderGameOver = () => {
+    return (
+      <div className="text-center p-8">
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          className="text-6xl mb-6"
+        >
+          😢
+        </motion.div>
+        <h2 className="text-3xl font-bold text-gray-900 mb-4">Journey Incomplete</h2>
+        <p className="text-gray-600 mb-6 text-lg">
+          {player.lives <= 0 
+            ? "You've run out of lives! Road safety requires constant vigilance."
+            : "You've run out of time! Being punctual is important, but safety comes first."}
+        </p>
+        
+        <div className="grid grid-cols-2 gap-4 mb-6 p-6 bg-gradient-to-r from-red-50 to-orange-50 rounded-2xl border border-red-200">
+          <div className="text-center">
+            <div className="text-2xl font-bold text-red-600 mb-1">{player.score}</div>
+            <div className="text-sm text-gray-600">Final Score</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-orange-600 mb-1">{gameState.currentCheckpoint}/{checkpoints.length}</div>
+            <div className="text-sm text-gray-600">Checkpoints Reached</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-yellow-600 mb-1">{gameState.violations}</div>
+            <div className="text-sm text-gray-600">Safety Violations</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-blue-600 mb-1">{gameState.safeActions}</div>
+            <div className="text-sm text-gray-600">Safe Actions</div>
+          </div>
+        </div>
+        
+        <div className="bg-blue-50 rounded-2xl p-6 mb-6 border border-blue-200">
+          <h3 className="font-bold text-blue-900 mb-2">Safety Lessons:</h3>
+          <p className="text-blue-800 text-sm">
+            Remember that road safety is about being aware of your surroundings, taking responsibility for your actions, 
+            respecting other road users, and being prepared for your journey. Try again and apply these principles!
+          </p>
+        </div>
+        
+        <div className="flex justify-center space-x-4">
+          <button
+            onClick={restartGame}
+            className="flex items-center space-x-2 px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors"
+          >
+            <RotateCcw className="h-4 w-4" />
+            <span>Try Again</span>
+          </button>
+          <button
+            onClick={completeGame}
+            className="flex items-center space-x-2 px-6 py-3 text-white rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl"
+            style={{ background: `linear-gradient(135deg, ${theme.primaryColor}, ${theme.secondaryColor})` }}
+          >
+            <Trophy className="h-4 w-4" />
+            <span>Continue</span>
+          </button>
+        </div>
+      </div>
+    );
+  };
+  
+  // Render victory screen
+  const renderVictory = () => {
+    // Calculate final score percentage
+    const maxPossibleScore = checkpoints.length * 100 + 50; // 100 per checkpoint + 50 for safety gear
+    const percentage = Math.min(100, Math.round((player.score / maxPossibleScore) * 100));
+    
+    return (
+      <div className="text-center p-8">
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          className="text-6xl mb-6"
+        >
+          🏆
+        </motion.div>
+        <h2 className="text-3xl font-bold text-gray-900 mb-4">Journey Complete!</h2>
+        <p className="text-gray-600 mb-6 text-lg">
+          Congratulations! You've successfully navigated through the city while applying road safety principles.
+        </p>
+        
+        <div className="grid grid-cols-2 gap-4 mb-6 p-6 bg-gradient-to-r from-green-50 to-blue-50 rounded-2xl border border-green-200">
+          <div className="text-center">
+            <div className="text-2xl font-bold text-green-600 mb-1">{player.score}</div>
+            <div className="text-sm text-gray-600">Final Score</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-blue-600 mb-1">{formatTime(300 - gameState.timeLeft)}</div>
+            <div className="text-sm text-gray-600">Completion Time</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-yellow-600 mb-1">{gameState.violations}</div>
+            <div className="text-sm text-gray-600">Safety Violations</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-purple-600 mb-1">{percentage}%</div>
+            <div className="text-sm text-gray-600">Safety Rating</div>
+          </div>
+        </div>
+        
+        <div className="bg-blue-50 rounded-2xl p-6 mb-6 border border-blue-200">
+          <h3 className="font-bold text-blue-900 mb-2">Road Safety Principles Mastered:</h3>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="bg-blue-100 p-3 rounded-lg">
+              <div className="font-bold text-blue-800 flex items-center">
+                <Eye className="h-4 w-4 mr-1" />
+                Awareness
+              </div>
+              <p className="text-blue-700">
+                Being alert and observant of your surroundings at all times
+              </p>
+            </div>
+            <div className="bg-yellow-100 p-3 rounded-lg">
+              <div className="font-bold text-yellow-800 flex items-center">
+                <AlertTriangle className="h-4 w-4 mr-1" />
+                Responsibility
+              </div>
+              <p className="text-yellow-700">
+                Taking ownership of your actions and following rules
+              </p>
+            </div>
+            <div className="bg-red-100 p-3 rounded-lg">
+              <div className="font-bold text-red-800 flex items-center">
+                <Heart className="h-4 w-4 mr-1" />
+                Respect
+              </div>
+              <p className="text-red-700">
+                Considering and accommodating other road users
+              </p>
+            </div>
+            <div className="bg-green-100 p-3 rounded-lg">
+              <div className="font-bold text-green-800 flex items-center">
+                <Shield className="h-4 w-4 mr-1" />
+                Preparation
+              </div>
+              <p className="text-green-700">
+                Planning ahead and ensuring you're ready for your journey
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="flex justify-center space-x-4">
+          <button
+            onClick={restartGame}
+            className="flex items-center space-x-2 px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors"
+          >
+            <RotateCcw className="h-4 w-4" />
+            <span>Play Again</span>
+          </button>
+          <button
+            onClick={completeGame}
+            className="flex items-center space-x-2 px-6 py-3 text-white rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl"
+            style={{ background: `linear-gradient(135deg, ${theme.primaryColor}, ${theme.secondaryColor})` }}
+          >
+            <Trophy className="h-4 w-4" />
+            <span>Complete Lesson</span>
+          </button>
+        </div>
+      </div>
+    );
+  };
+  
+  // Main render function
+  const renderContent = () => {
+    switch (gameState.phase) {
+      case 'character_select':
+        return renderCharacterSelection();
+      case 'instructions':
+        return renderInstructions();
+      case 'playing':
+        return renderGameScreen();
+      case 'checkpoint':
+        return renderCheckpointQuestion();
+      case 'game_over':
+        return renderGameOver();
+      case 'victory':
+        return renderVictory();
+      default:
+        return renderCharacterSelection();
+    }
+  };
+  
+  return (
+    <div className="min-h-[500px]">
+      {renderContent()}
+    </div>
+  );
 };
 
 export default RoadSafetyQuest;
