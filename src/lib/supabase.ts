@@ -3,28 +3,31 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-// Check if we're in development mode with placeholder values
-const isPlaceholderConfig = 
-  !supabaseUrl || 
-  supabaseUrl === 'your_supabase_url_here' ||
-  !supabaseAnonKey || 
-  supabaseAnonKey === 'your_supabase_anon_key_here'
-
 // Enhanced validation for environment variables
 const validateSupabaseConfig = () => {
-  if (isPlaceholderConfig) {
-    console.warn(
-      '⚠️  Supabase is not configured. Running in development mode.\n\n' +
-      'To connect to Supabase:\n' +
+  if (!supabaseUrl || supabaseUrl === 'your_supabase_url_here') {
+    throw new Error(
+      '❌ VITE_SUPABASE_URL is not configured.\n\n' +
+      'Please follow these steps:\n' +
       '1. Go to your Supabase project dashboard\n' +
       '2. Navigate to Settings > API\n' +
-      '3. Copy your Project URL and anon key\n' +
-      '4. Update your .env file with:\n' +
-      '   VITE_SUPABASE_URL=https://your-project-id.supabase.co\n' +
-      '   VITE_SUPABASE_ANON_KEY=your-anon-key\n' +
+      '3. Copy your Project URL\n' +
+      '4. Update the VITE_SUPABASE_URL in your .env file\n' +
+      '5. Restart your development server\n\n' +
+      'Example: VITE_SUPABASE_URL=https://your-project-id.supabase.co'
+    )
+  }
+
+  if (!supabaseAnonKey || supabaseAnonKey === 'your_supabase_anon_key_here') {
+    throw new Error(
+      '❌ VITE_SUPABASE_ANON_KEY is not configured.\n\n' +
+      'Please follow these steps:\n' +
+      '1. Go to your Supabase project dashboard\n' +
+      '2. Navigate to Settings > API\n' +
+      '3. Copy your anon/public key\n' +
+      '4. Update the VITE_SUPABASE_ANON_KEY in your .env file\n' +
       '5. Restart your development server'
     )
-    return false
   }
 
   // Validate URL format
@@ -49,51 +52,32 @@ const validateSupabaseConfig = () => {
       'Please verify you copied the complete key from your Supabase dashboard.'
     )
   }
-
-  return true
 }
 
-// Validate configuration
-const isConfigValid = validateSupabaseConfig()
+// Validate configuration before creating client
+validateSupabaseConfig()
 
-// Create Supabase client with fallback for development
-export const supabase = isConfigValid 
-  ? createClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        autoRefreshToken: true,
-        persistSession: true,
-        detectSessionInUrl: true
-      },
-      global: {
-        headers: {
-          'X-Client-Info': 'learning-app'
-        }
-      },
-      realtime: {
-        params: {
-          eventsPerSecond: 10
-        }
-      }
-    })
-  : createClient(
-      'https://placeholder.supabase.co', 
-      'placeholder-key',
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-          detectSessionInUrl: false
-        }
-      }
-    )
+// Create Supabase client with enhanced configuration
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'learning-app'
+    }
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 10
+    }
+  }
+})
 
 // Enhanced connection test function with better error handling
 export const testSupabaseConnection = async () => {
-  if (!isConfigValid) {
-    console.log('⚠️  Supabase not configured - skipping connection test')
-    return false
-  }
-
   try {
     console.log('🔄 Testing Supabase connection...')
     
@@ -144,9 +128,6 @@ export const testSupabaseConnection = async () => {
     return false
   }
 }
-
-// Export configuration status for components to check
-export const isSupabaseConfigured = isConfigValid
 
 export type Database = {
   public: {
