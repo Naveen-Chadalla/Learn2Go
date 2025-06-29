@@ -12,14 +12,18 @@ import {
   Shield, 
   Lock,
   Home,
-  ArrowLeft
+  ArrowLeft,
+  Wifi,
+  WifiOff
 } from 'lucide-react'
+import { isSupabaseConfigured, testSupabaseConnection } from '../../lib/supabase'
 
 const Login: React.FC = () => {
   const [username, setUsername] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({})
+  const [connectionStatus, setConnectionStatus] = useState<'unknown' | 'connected' | 'disconnected'>('unknown')
   
   const { signIn, isAuthenticated } = useAuth()
   const { t } = useLanguage()
@@ -28,6 +32,31 @@ const Login: React.FC = () => {
   
   // Get the intended destination or default to dashboard
   const from = location.state?.from?.pathname || '/dashboard'
+
+  // Check Supabase connection on component mount
+  React.useEffect(() => {
+    const checkConnection = async () => {
+      if (!isSupabaseConfigured) {
+        setConnectionStatus('disconnected')
+        setError('Supabase is not configured. Please check your environment variables and restart the development server.')
+        return
+      }
+      
+      try {
+        const isConnected = await testSupabaseConnection()
+        setConnectionStatus(isConnected ? 'connected' : 'disconnected')
+        
+        if (!isConnected) {
+          setError('Unable to connect to the database. Please check your internet connection and Supabase configuration.')
+        }
+      } catch (err) {
+        setConnectionStatus('disconnected')
+        setError('Database connection failed. Please try again later.')
+      }
+    }
+    
+    checkConnection()
+  }, [])
 
   // Redirect if already authenticated
   React.useEffect(() => {
@@ -89,6 +118,20 @@ const Login: React.FC = () => {
     setError('')
     setValidationErrors({})
 
+    // Check Supabase configuration first
+    if (!isSupabaseConfigured) {
+      setError('Database is not configured. Please contact the administrator.')
+      setLoading(false)
+      return
+    }
+
+    // Check connection status
+    if (connectionStatus === 'disconnected') {
+      setError('Cannot connect to the database. Please check your internet connection and try again.')
+      setLoading(false)
+      return
+    }
+
     // Validate username
     const usernameErrors = validateInput('username', username)
 
@@ -110,13 +153,13 @@ const Login: React.FC = () => {
       if (error) {
         console.error('[LOGIN] Authentication failed:', error)
         
-        // Enhanced error handling with updated error codes
-        if (error.code === 'invalid_credentials') {
+        // Enhanced error handling with network-specific messages
+        if (error.message?.includes('Failed to fetch') || error.code === 'network_error') {
+          setError('Network connection failed. Please check your internet connection and try again.')
+        } else if (error.code === 'invalid_credentials') {
           setError('Invalid username or the account may not exist. Please check your username or sign up for a new account.')
         } else if (error.code === 'rate_limit') {
           setError('Too many login attempts. Please wait a few minutes before trying again.')
-        } else if (error.code === 'network_error') {
-          setError('Network error. Please check your connection and try again.')
         } else if (error.code === 'email_not_confirmed') {
           setError('Please verify your email address before signing in.')
         } else {
@@ -136,9 +179,14 @@ const Login: React.FC = () => {
           navigate(from, { replace: true })
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('[LOGIN] Unexpected error:', error)
-      setError('An unexpected error occurred. Please try again.')
+      
+      if (error.name === 'TypeError' && error.message?.includes('Failed to fetch')) {
+        setError('Network error: Unable to connect to the server. Please check your internet connection.')
+      } else {
+        setError('An unexpected error occurred. Please try again.')
+      }
     } finally {
       setLoading(false)
     }
@@ -193,6 +241,31 @@ const Login: React.FC = () => {
             <span className="font-medium">Home</span>
           </Link>
         </motion.div>
+
+        {/* Connection Status Indicator */}
+        {connectionStatus !== 'unknown' && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`flex items-center justify-center space-x-2 px-4 py-2 rounded-2xl text-sm font-medium ${
+              connectionStatus === 'connected' 
+                ? 'bg-green-50 text-green-700 border border-green-200' 
+                : 'bg-red-50 text-red-700 border border-red-200'
+            }`}
+          >
+            {connectionStatus === 'connected' ? (
+              <>
+                <Wifi className="h-4 w-4" />
+                <span>Database Connected</span>
+              </>
+            ) : (
+              <>
+                <WifiOff className="h-4 w-4" />
+                <span>Database Disconnected</span>
+              </>
+            )}
+          </motion.div>
+        )}
 
         {/* Header */}
         <div className="text-center">
@@ -273,6 +346,23 @@ const Login: React.FC = () => {
               </motion.div>
             )}
 
+            {/* Configuration Warning */}
+            {!isSupabaseConfigured && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4"
+              >
+                <div className="flex items-center space-x-2">
+                  <AlertCircle className="h-5 w-5 text-yellow-600" />
+                  <span className="font-bold text-yellow-800">Configuration Required</span>
+                </div>
+                <p className="text-yellow-700 text-sm mt-1">
+                  Supabase database is not configured. Please update your .env file with valid credentials and restart the server.
+                </p>
+              </motion.div>
+            )}
+
             {/* Admin User Detection */}
             {isAdminUser && (
               <motion.div
@@ -310,7 +400,7 @@ const Login: React.FC = () => {
                     validationErrors.username ? 'border-red-300' : 'border-gray-300'
                   } placeholder-gray-500 text-gray-900 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:z-10 transition-all duration-200 bg-white/80 backdrop-blur-sm`}
                   placeholder="Enter your username"
-                  disabled={loading}
+                  disabled={loading || !isSupabaseConfigured}
                   maxLength={20}
                   autoComplete="username"
                 />
@@ -330,7 +420,7 @@ const Login: React.FC = () => {
             <div>
               <motion.button
                 type="submit"
-                disabled={loading || !username.trim()}
+                disabled={loading || !username.trim() || !isSupabaseConfigured || connectionStatus === 'disconnected'}
                 whileHover={{ scale: 1.02, y: -1 }}
                 whileTap={{ scale: 0.98 }}
                 className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-2xl text-white bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-xl hover:shadow-2xl"
