@@ -28,7 +28,7 @@ interface SpeedCamera {
 const SpeedLimitGame: React.FC<SpeedLimitGameProps> = ({ onComplete, theme }) => {
   const [gameState, setGameState] = useState<'waiting' | 'playing' | 'paused' | 'finished'>('waiting')
   const [score, setScore] = useState(0)
-  const [timeLeft, setTimeLeft] = useState(120)
+  const [timeLeft, setTimeLeft] = useState(30)
   const [currentSpeed, setCurrentSpeed] = useState(0)
   const [targetSpeed, setTargetSpeed] = useState(30)
   const [position, setPosition] = useState(0)
@@ -274,7 +274,7 @@ const SpeedLimitGame: React.FC<SpeedLimitGameProps> = ({ onComplete, theme }) =>
   const startGame = () => {
     setGameState('playing')
     setScore(0)
-    setTimeLeft(120)
+    setTimeLeft(30)
     setCurrentSpeed(0)
     setPosition(0)
     setCurrentSegment(0)

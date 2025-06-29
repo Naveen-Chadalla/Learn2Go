@@ -42,7 +42,7 @@ const ParkingGame: React.FC<ParkingGameProps> = ({ onComplete, theme }) => {
   const [gameState, setGameState] = useState<'waiting' | 'playing' | 'paused' | 'finished'>('waiting')
   const [level, setLevel] = useState(1)
   const [score, setScore] = useState(0)
-  const [timeLeft, setTimeLeft] = useState(60)
+  const [timeLeft, setTimeLeft] = useState(30)
   const [attempts, setAttempts] = useState(0)
   const [playerCar, setPlayerCar] = useState<PlayerCar>({
     x: 50,
@@ -316,7 +316,7 @@ const ParkingGame: React.FC<ParkingGameProps> = ({ onComplete, theme }) => {
         if (level < 3) {
           setLevel(l => l + 1)
           setAttempts(0)
-          setTimeLeft(60)
+          setTimeLeft(30)
           initializeLevel(level + 1)
         } else {
           setGameState('finished')
@@ -329,7 +329,7 @@ const ParkingGame: React.FC<ParkingGameProps> = ({ onComplete, theme }) => {
     setGameState('playing')
     setLevel(1)
     setScore(0)
-    setTimeLeft(60)
+    setTimeLeft(30)
     setAttempts(0)
     setCollisions(0)
     setPerfectParks(0)

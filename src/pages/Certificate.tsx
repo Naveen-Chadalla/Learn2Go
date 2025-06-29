@@ -219,6 +219,21 @@ const Certificate: React.FC = () => {
               <div className="absolute top-0 left-0 w-24 h-24 bg-blue-50 rounded-full opacity-30"></div>
               <div className="absolute top-0 right-0 w-24 h-24 bg-purple-50 rounded-full opacity-30"></div>
               
+              <div className="flex justify-center items-center mb-4">
+                <img 
+                  src="/src/assets/ChatGPT Image Jun 21, 2025, 03_33_49 PM copy.png" 
+                  alt="Learn2Go Logo" 
+                  className="h-20 w-auto shadow-lg rounded-xl"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    const fallbackEl = document.createElement('div');
+                    fallbackEl.className = "w-20 h-20 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-lg";
+                    fallbackEl.innerHTML = '<span class="text-white text-2xl font-bold">L2G</span>';
+                    e.currentTarget.parentNode?.appendChild(fallbackEl);
+                  }}
+                />
+              </div>
+              
               <motion.div
                 animate={{ rotate: [0, 5, -5, 0] }}
                 transition={{ duration: 6, repeat: Infinity }}

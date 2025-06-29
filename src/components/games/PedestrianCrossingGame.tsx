@@ -36,7 +36,7 @@ interface Vehicle {
 const PedestrianCrossingGame: React.FC<PedestrianCrossingGameProps> = ({ onComplete, theme }) => {
   const [gameState, setGameState] = useState<'waiting' | 'playing' | 'paused' | 'finished'>('waiting')
   const [score, setScore] = useState(0)
-  const [timeLeft, setTimeLeft] = useState(90)
+  const [timeLeft, setTimeLeft] = useState(30)
   const [pedestrians, setPedestrians] = useState<Pedestrian[]>([])
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [safeCrossings, setSafeCrossings] = useState(0)
@@ -272,7 +272,7 @@ const PedestrianCrossingGame: React.FC<PedestrianCrossingGameProps> = ({ onCompl
   const startGame = () => {
     setGameState('playing')
     setScore(0)
-    setTimeLeft(90)
+    setTimeLeft(30)
     setSafeCrossings(0)
     setNearMisses(0)
     setAccidents(0)

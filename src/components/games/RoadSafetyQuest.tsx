@@ -100,7 +100,7 @@ const RoadSafetyQuest: React.FC<RoadSafetyQuestProps> = ({
     score: 0,
     lives: 3,
     level: 1,
-    timeLeft: 180,
+    timeLeft: 30,
     isPaused: false,
     isGameOver: false,
     isLevelComplete: false,
@@ -204,7 +204,7 @@ const RoadSafetyQuest: React.FC<RoadSafetyQuestProps> = ({
       score: 0,
       lives: 3,
       level: 1,
-      timeLeft: 180,
+      timeLeft: 30,
       isPaused: false,
       isGameOver: false,
       isLevelComplete: false,
@@ -698,7 +698,7 @@ const RoadSafetyQuest: React.FC<RoadSafetyQuestProps> = ({
       score: 0,
       lives: 3,
       level: 1,
-      timeLeft: 180,
+      timeLeft: 30,
       isPaused: false,
       isGameOver: false,
       isLevelComplete: false,
@@ -727,7 +727,7 @@ const RoadSafetyQuest: React.FC<RoadSafetyQuestProps> = ({
       {
         title: "Welcome to Road Safety Quest!",
         content: "Learn road safety principles while navigating through a virtual city. Complete checkpoints, avoid hazards, and collect safety tips to succeed!",
-        image: "https://images.pexels.com/photos/210182/pexels-photo-210182.jpeg?auto=compress&cs=tinysrgb&w=400"
+        image: null
       },
       {
         title: "Game Controls",
@@ -739,7 +739,7 @@ const RoadSafetyQuest: React.FC<RoadSafetyQuestProps> = ({
       {
         title: "Safety First!",
         content: "Stop at red lights, use crosswalks, yield to traffic, and watch out for hazards. Breaking safety rules will cost you lives!",
-        image: "https://images.pexels.com/photos/2199293/pexels-photo-2199293.jpeg?auto=compress&cs=tinysrgb&w=400"
+        image: null
       },
       {
         title: "Checkpoints & Tips",
@@ -774,16 +774,6 @@ const RoadSafetyQuest: React.FC<RoadSafetyQuestProps> = ({
           <h2 className="text-3xl font-bold text-gray-900 mb-4">
             {tutorial.title}
           </h2>
-          
-          {tutorial.image && (
-            <div className="mb-6">
-              <img 
-                src={tutorial.image} 
-                alt="Tutorial" 
-                className="w-full max-w-md mx-auto h-48 object-cover rounded-xl"
-              />
-            </div>
-          )}
           
           <p className="text-gray-600 mb-8 text-lg leading-relaxed">
             {tutorial.content}

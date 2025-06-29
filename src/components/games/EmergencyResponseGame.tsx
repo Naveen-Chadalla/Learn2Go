@@ -13,7 +13,6 @@ interface EmergencyResponseGameProps {
 interface Scenario {
   id: string
   situation: string
-  image?: string
   question: string
   options: string[]
   correctIndex: number
@@ -36,7 +35,6 @@ const EmergencyResponseGame: React.FC<EmergencyResponseGameProps> = ({ onComplet
     {
       id: 'accident',
       situation: 'You witness a car accident on the highway',
-      image: 'https://images.pexels.com/photos/1545743/pexels-photo-1545743.jpeg?auto=compress&cs=tinysrgb&w=800',
       question: 'What should you do first?',
       options: [
         'Stop immediately in the middle of the road to help',
@@ -51,7 +49,6 @@ const EmergencyResponseGame: React.FC<EmergencyResponseGameProps> = ({ onComplet
     {
       id: 'breakdown',
       situation: 'Your car breaks down on a busy road',
-      image: 'https://images.pexels.com/photos/210182/pexels-photo-210182.jpeg?auto=compress&cs=tinysrgb&w=800',
       question: 'What is the correct procedure?',
       options: [
         'Turn on hazard lights, move to the shoulder if possible, and call for help',
@@ -66,7 +63,6 @@ const EmergencyResponseGame: React.FC<EmergencyResponseGameProps> = ({ onComplet
     {
       id: 'fire',
       situation: 'You notice smoke coming from under your hood while driving',
-      image: 'https://images.pexels.com/photos/163016/crash-test-collision-60-km-h-distraction-163016.jpeg?auto=compress&cs=tinysrgb&w=800',
       question: 'What should you do?',
       options: [
         'Continue driving to the nearest service station',
@@ -81,7 +77,6 @@ const EmergencyResponseGame: React.FC<EmergencyResponseGameProps> = ({ onComplet
     {
       id: 'flood',
       situation: 'You encounter a flooded road ahead',
-      image: 'https://images.pexels.com/photos/1446076/pexels-photo-1446076.jpeg?auto=compress&cs=tinysrgb&w=800',
       question: 'What is the safest action?',
       options: [
         'Drive through slowly in first gear',
@@ -96,7 +91,6 @@ const EmergencyResponseGame: React.FC<EmergencyResponseGameProps> = ({ onComplet
     {
       id: 'medical',
       situation: 'A passenger in your car has a medical emergency',
-      image: 'https://images.pexels.com/photos/263402/pexels-photo-263402.jpeg?auto=compress&cs=tinysrgb&w=800',
       question: 'What should you do?',
       options: [
         'Speed to the nearest hospital',
@@ -342,17 +336,6 @@ const EmergencyResponseGame: React.FC<EmergencyResponseGameProps> = ({ onComplet
           </div>
           <div className="text-xl text-gray-800 font-medium">{scenario.situation}</div>
         </div>
-
-        {/* Scenario Image */}
-        {scenario.image && (
-          <div className="mb-6">
-            <img
-              src={scenario.image}
-              alt={`Emergency scenario: ${scenario.situation}`}
-              className="w-full h-64 object-cover rounded-xl"
-            />
-          </div>
-        )}
 
         {/* Question */}
         <h3 className="text-2xl font-semibold text-gray-900 mb-6">{scenario.question}</h3>
