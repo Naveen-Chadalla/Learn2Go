@@ -26,7 +26,8 @@ import {
   Award,
   Zap,
   Shield,
-  Heart
+  Heart,
+  Eye
 } from 'lucide-react';
 
 interface RoadSafetyQuestProps {
