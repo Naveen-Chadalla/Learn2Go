@@ -6,6 +6,7 @@ import ParkingGame from './ParkingGame';
 import SpeedLimitGame from './SpeedLimitGame';
 import EmergencyResponseGame from './EmergencyResponseGame';
 import TrafficSafetyGame from './TrafficSafetyGame';
+import RoadSafetyQuest from './RoadSafetyQuest';
 import { Play, HelpCircle, AlertTriangle, Gamepad, Keyboard, Smartphone, Info, Settings } from 'lucide-react';
 
 interface GameSelectorProps {
@@ -33,7 +34,7 @@ const GameSelector: React.FC<GameSelectorProps> = ({
   const [showHelp, setShowHelp] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [gameMode, setGameMode] = useState<'classic' | 'modern'>('modern');
+  const [gameMode, setGameMode] = useState<'classic' | 'modern' | 'quest'>('quest');
 
   // Check if user is on mobile device
   useEffect(() => {
@@ -168,10 +169,27 @@ const GameSelector: React.FC<GameSelectorProps> = ({
         'Tap response options to select',
         'Swipe between scenarios'
       ]
+    },
+    {
+      id: 'quest',
+      name: 'Road Safety Quest',
+      description: 'Navigate through the city safely by following road safety principles',
+      icon: '🛣️',
+      controls: [
+        '↑/W - Move up',
+        '↓/S - Move down',
+        '←/A - Move left',
+        '→/D - Move right',
+        'Follow traffic rules and complete checkpoints'
+      ],
+      mobileControls: [
+        'Use on-screen arrow buttons to move',
+        'Tap to interact with checkpoints'
+      ]
     }
   ];
 
-  const currentGame = gameOptions.find(game => game.id === gameType);
+  const currentGame = gameOptions.find(game => game.id === gameType) || gameOptions.find(game => game.id === 'quest');
 
   const handleStartGame = () => {
     setShowInstructions(false);
@@ -179,6 +197,14 @@ const GameSelector: React.FC<GameSelectorProps> = ({
   };
 
   const renderGame = () => {
+    if (gameMode === 'quest') {
+      return <RoadSafetyQuest 
+        onComplete={onComplete} 
+        theme={theme} 
+        language={language}
+      />;
+    }
+    
     if (gameMode === 'modern') {
       return <TrafficSafetyGame 
         topic={lessonTitle} 
@@ -204,7 +230,7 @@ const GameSelector: React.FC<GameSelectorProps> = ({
     }
   };
 
-  if (!showInstructions && (selectedGame || gameMode === 'modern')) {
+  if (!showInstructions && (selectedGame || gameMode === 'modern' || gameMode === 'quest')) {
     return renderGame();
   }
 
@@ -256,6 +282,16 @@ const GameSelector: React.FC<GameSelectorProps> = ({
               <span className="text-sm text-blue-700">Game Mode:</span>
               <div className="flex space-x-2">
                 <button
+                  onClick={() => setGameMode('quest')}
+                  className={`px-3 py-1 text-xs rounded-lg ${
+                    gameMode === 'quest' 
+                      ? 'bg-blue-600 text-white' 
+                      : 'bg-gray-100 text-gray-700'
+                  }`}
+                >
+                  Quest
+                </button>
+                <button
                   onClick={() => setGameMode('modern')}
                   className={`px-3 py-1 text-xs rounded-lg ${
                     gameMode === 'modern' 
@@ -278,6 +314,7 @@ const GameSelector: React.FC<GameSelectorProps> = ({
               </div>
             </div>
             <div className="mt-2 text-xs text-blue-600">
+              Quest: New interactive journey with checkpoints and challenges<br/>
               Modern: Enhanced 2D game with improved graphics and controls<br/>
               Classic: Original game style with simpler mechanics
             </div>
