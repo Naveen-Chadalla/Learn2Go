@@ -6,6 +6,10 @@ export class ActivityTracker {
   private username: string | null = null
   private isActive = false
   private isPausedByNetwork = false
+  private lastHeartbeatAttempt = 0
+  private heartbeatRetryCount = 0
+  private readonly MAX_RETRIES = 3
+  private readonly RETRY_DELAY = 5000 // 5 seconds
 
   constructor() {
     this.sessionId = this.generateSessionId()
@@ -88,9 +92,22 @@ export class ActivityTracker {
       return
     }
 
+    // Prevent too frequent retries
+    const now = Date.now()
+    if (now - this.lastHeartbeatAttempt < this.RETRY_DELAY && this.heartbeatRetryCount > 0) {
+      console.log('Skipping heartbeat - too soon after failure')
+      return
+    }
+    
+    this.lastHeartbeatAttempt = now
+
     try {
       // Wrap in try/catch to prevent errors from bubbling up
       try {
+        // Use a timeout to prevent hanging requests
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 second timeout
+        
         const { error } = await supabase
           .from('user_activity_logs')
           .insert({
@@ -104,13 +121,19 @@ export class ActivityTracker {
             },
             page_url: window.location.href,
             user_agent: navigator.userAgent
-          })
+          }, { signal: controller.signal })
+
+        clearTimeout(timeoutId)
 
         if (error) {
           console.warn('Activity heartbeat warning:', error)
           // Don't throw error to prevent disrupting user experience
+          this.heartbeatRetryCount++
           return
         }
+
+        // Reset retry count on success
+        this.heartbeatRetryCount = 0
 
         // Update user's last activity
         await supabase
@@ -123,15 +146,33 @@ export class ActivityTracker {
           .catch(err => console.warn('User activity update warning:', err))
       } catch (innerErr) {
         console.warn('Activity heartbeat inner error (non-critical):', innerErr)
+        this.heartbeatRetryCount++
       }
     } catch (err) {
       console.warn('Activity heartbeat failed (non-critical):', err)
+      this.heartbeatRetryCount++
       
       // If it's a network error, pause tracking and let network events handle resumption
       if (err instanceof TypeError && err.message.includes('Failed to fetch')) {
         console.warn('Network connectivity issue detected, pausing activity tracking')
         this.isPausedByNetwork = true
         this.pauseTracking()
+      }
+      
+      // If we've tried too many times, pause heartbeats for a while
+      if (this.heartbeatRetryCount >= this.MAX_RETRIES) {
+        console.warn(`Pausing heartbeats after ${this.MAX_RETRIES} failed attempts`)
+        this.pauseTracking()
+        
+        // Try to resume after a longer delay
+        setTimeout(() => {
+          if (this.isActive && navigator.onLine) {
+            console.log('Attempting to resume heartbeats after pause')
+            this.heartbeatRetryCount = 0
+            this.isPausedByNetwork = false
+            this.startHeartbeat()
+          }
+        }, 60000) // Try again after 1 minute
       }
     }
   }
@@ -156,6 +197,10 @@ export class ActivityTracker {
     try {
       // Wrap in try/catch to prevent errors from bubbling up
       try {
+        // Use a timeout to prevent hanging requests
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 second timeout
+        
         const { error } = await supabase
           .from('user_activity_logs')
           .insert({
@@ -166,7 +211,9 @@ export class ActivityTracker {
             page_url: window.location.href,
             user_agent: navigator.userAgent,
             timestamp: new Date().toISOString()
-          })
+          }, { signal: controller.signal })
+
+        clearTimeout(timeoutId)
 
         if (error) {
           console.warn('Activity logging warning:', error)
