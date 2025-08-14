@@ -1,4 +1,4 @@
-LLearn2Go is an interactive, gamified road safety education platform designed to teach students traffic rules and safe practices in an engaging way. Built for the Bolt.new World’s Largest Hackathon, the project combines lessons, quizzes, animations, and progress tracking to make learning both fun and impactful.
+Learn2Go is an interactive, gamified road safety education platform designed to teach students traffic rules and safe practices in an engaging way. Built for the Bolt.new World’s Largest Hackathon, the project combines lessons, quizzes, animations, and progress tracking to make learning both fun and impactful.
 
 🎯 Goal
 
